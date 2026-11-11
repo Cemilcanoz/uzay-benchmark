@@ -1,0 +1,1261 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Antigravity CLI — Uzay & N-Cisim Simülasyonu Model Benchmark Arena</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #050814;
+      --bg-card: rgba(12, 19, 38, 0.86);
+      --bg-card-solid: #0c1326;
+      --border: rgba(99, 145, 255, 0.22);
+      --border-strong: rgba(99, 145, 255, 0.48);
+      --text: #eef4ff;
+      --text-muted: #94a6cc;
+      --opus: #a855f7;
+      --argon: #38bdf8;
+      --sonnet: #f59e0b;
+      --flash: #10b981;
+      --gptoss: #f43f5e;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg-dark);
+      color: var(--text);
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+
+    /* TOP NAVIGATION BAR */
+    header.topbar {
+      height: 62px;
+      background: rgba(6, 10, 24, 0.94);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 18px;
+      gap: 14px;
+      z-index: 100;
+      position: relative;
+      backdrop-filter: blur(16px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      flex-shrink: 0;
+    }
+
+    .brand-logo {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: radial-gradient(circle at 30% 30%, #60a5fa, #7c3aed 65%, #1e1b4b);
+      box-shadow: 0 0 20px rgba(96, 165, 250, 0.45);
+      display: grid;
+      place-items: center;
+      font-size: 18px;
+    }
+
+    .brand-text h1 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      color: #fff;
+    }
+
+    .brand-text span {
+      display: block;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* MODEL TABS */
+    .model-switcher {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(15, 23, 48, 0.8);
+      padding: 4px;
+      border-radius: 12px;
+      border: 1px solid rgba(120, 160, 255, 0.18);
+      overflow-x: auto;
+    }
+
+    .model-tab {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 12px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      white-space: nowrap;
+      font-family: inherit;
+    }
+
+    .model-tab:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .model-tab.active {
+      color: #fff;
+      background: rgba(45, 75, 155, 0.45);
+      border-color: var(--border-strong);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+    }
+
+    .model-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .model-pill-meta {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10.5px;
+      padding: 2px 6px;
+      border-radius: 5px;
+      background: rgba(0, 0, 0, 0.38);
+      color: #cbd5e1;
+    }
+
+    /* VIEW SWITCHER */
+    .view-modes {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .mode-btn {
+      padding: 8px 13px;
+      border-radius: 9px;
+      border: 1px solid var(--border);
+      background: rgba(17, 27, 54, 0.75);
+      color: #dbe7ff;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.16s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: inherit;
+    }
+
+    .mode-btn:hover {
+      border-color: var(--border-strong);
+      background: rgba(35, 58, 115, 0.65);
+    }
+
+    .mode-btn.active {
+      background: linear-gradient(135deg, #2563eb, #7c3aed);
+      border-color: #93c5fd;
+      color: #fff;
+      box-shadow: 0 0 18px rgba(59, 130, 246, 0.45);
+    }
+
+    /* MAIN VIEWPORT CONTAINER */
+    main.viewport {
+      position: relative;
+      width: 100%;
+      height: calc(100vh - 62px);
+      overflow: hidden;
+    }
+
+    .view-section {
+      width: 100%;
+      height: 100%;
+      display: none;
+    }
+
+    .view-section.active {
+      display: block;
+    }
+
+    /* 1. SINGLE SIMULATION VIEW */
+    #sim-frame {
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: #000;
+    }
+
+    /* FLOATING TELEMETRY DRAWER OVER SIMULATION */
+    .telemetry-bar {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 40;
+      background: rgba(7, 12, 28, 0.88);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border-strong);
+      border-radius: 14px;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.75);
+      max-width: 96vw;
+      transition: all 0.22s ease;
+    }
+
+    .telemetry-bar.minimized .tele-details {
+      display: none;
+    }
+
+    .tele-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding-right: 12px;
+      border-right: 1px solid rgba(120, 160, 255, 0.2);
+    }
+
+    .tele-title {
+      font-weight: 700;
+      font-size: 13.5px;
+      color: #fff;
+      white-space: nowrap;
+    }
+
+    .tele-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .tele-details {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .tele-stat {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .tele-stat-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-muted);
+    }
+
+    .tele-stat-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .tele-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .mini-btn {
+      padding: 5px 10px;
+      border-radius: 7px;
+      border: 1px solid rgba(120, 160, 255, 0.3);
+      background: rgba(30, 50, 100, 0.5);
+      color: #dbeafe;
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .mini-btn:hover {
+      background: rgba(59, 130, 246, 0.5);
+    }
+
+    /* THOUGHT MODAL / POPOVER */
+    .thought-drawer {
+      position: absolute;
+      bottom: 84px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(760px, 94vw);
+      background: rgba(9, 15, 34, 0.96);
+      backdrop-filter: blur(18px);
+      border: 1px solid var(--border-strong);
+      border-radius: 14px;
+      padding: 16px 20px;
+      z-index: 45;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.85);
+      display: none;
+    }
+
+    .thought-drawer.open {
+      display: block;
+    }
+
+    .thought-drawer h4 {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #93c5fd;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .thought-quote {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      line-height: 1.6;
+      color: #cbd5e1;
+      background: rgba(0, 0, 0, 0.45);
+      padding: 10px 12px;
+      border-radius: 8px;
+      border-left: 3px solid #60a5fa;
+      margin-bottom: 10px;
+      max-height: 160px;
+      overflow-y: auto;
+    }
+
+    .thought-verdict {
+      font-size: 12.5px;
+      line-height: 1.5;
+      color: #e2e8f0;
+    }
+
+    /* 2. DASHBOARD & BENCHMARK ANALYTICS VIEW */
+    #dashboard-view {
+      overflow-y: auto;
+      padding: 28px 32px 60px;
+      background:
+        radial-gradient(circle at 15% 15%, rgba(56, 189, 248, 0.08), transparent 35%),
+        radial-gradient(circle at 85% 20%, rgba(168, 85, 247, 0.09), transparent 40%),
+        var(--bg-dark);
+    }
+
+    .dash-container {
+      max-width: 1360px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 26px;
+    }
+
+    .hero-banner {
+      background: linear-gradient(135deg, rgba(17, 27, 58, 0.9), rgba(10, 15, 32, 0.92));
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 24px 28px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+
+    .hero-banner h2 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 24px;
+      margin-bottom: 6px;
+      color: #fff;
+    }
+
+    .hero-banner p {
+      color: var(--text-muted);
+      font-size: 13.5px;
+      max-width: 780px;
+      line-height: 1.55;
+    }
+
+    .kpi-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 14px;
+    }
+
+    .kpi-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px 18px;
+    }
+
+    .kpi-card .kpi-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.9px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .kpi-card .kpi-value {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 22px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+
+    .kpi-card .kpi-sub {
+      font-size: 12px;
+      color: #93c5fd;
+    }
+
+    /* CHARTS GRID */
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(410px, 1fr));
+      gap: 18px;
+    }
+
+    .chart-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px 22px;
+    }
+
+    .chart-card h3 {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 4px;
+      color: #fff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .chart-card .chart-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+
+    .bar-row {
+      margin-bottom: 12px;
+    }
+
+    .bar-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .bar-label-line {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12.5px;
+      margin-bottom: 5px;
+      font-weight: 600;
+    }
+
+    .bar-label-line .mono {
+      font-family: 'JetBrains Mono', monospace;
+      color: #dbeafe;
+    }
+
+    .bar-track {
+      width: 100%;
+      height: 12px;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* COMPARISON TABLE */
+    .table-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 22px;
+      overflow-x: auto;
+    }
+
+    .table-card h3 {
+      font-size: 16px;
+      margin-bottom: 14px;
+    }
+
+    table.bench-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    table.bench-table th,
+    table.bench-table td {
+      padding: 12px 14px;
+      text-align: left;
+      border-bottom: 1px solid rgba(120, 160, 255, 0.14);
+    }
+
+    table.bench-table th {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.9px;
+      color: var(--text-muted);
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    table.bench-table tr:hover td {
+      background: rgba(59, 130, 246, 0.06);
+    }
+
+    .num {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+    }
+
+    .launch-sim-btn {
+      padding: 6px 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(96, 165, 250, 0.4);
+      background: rgba(37, 99, 235, 0.25);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .launch-sim-btn:hover {
+      background: #2563eb;
+    }
+
+    /* MODEL CARDS */
+    .model-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+      gap: 18px;
+    }
+
+    .model-detail-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .mdc-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .mdc-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .mdc-family {
+      font-size: 11.5px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .mdc-badges {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .mdc-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.06);
+      color: #e2e8f0;
+    }
+
+    .mdc-spec {
+      font-size: 12px;
+      color: #cbd5e1;
+      line-height: 1.5;
+      background: rgba(0, 0, 0, 0.26);
+      padding: 10px 12px;
+      border-radius: 8px;
+    }
+
+    .mdc-spec strong {
+      color: #93c5fd;
+    }
+
+    .mdc-thought {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11.5px;
+      color: #94a3b8;
+      background: rgba(0, 0, 0, 0.4);
+      padding: 10px 12px;
+      border-radius: 8px;
+      border-left: 3px solid var(--border-strong);
+      line-height: 1.5;
+    }
+
+    /* 3. SPLIT SCREEN COMPARISON VIEW */
+    #split-view {
+      display: none;
+      width: 100%;
+      height: 100%;
+      flex-direction: column;
+    }
+
+    #split-view.active {
+      display: flex;
+    }
+
+    .split-toolbar {
+      height: 48px;
+      background: #080e20;
+      border-bottom: 1px solid var(--border);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      padding: 0 16px;
+      align-items: center;
+    }
+
+    .split-selector {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12.5px;
+      font-weight: 600;
+    }
+
+    .split-selector select {
+      background: #111c38;
+      color: #fff;
+      border: 1px solid var(--border-strong);
+      padding: 5px 10px;
+      border-radius: 7px;
+      font-size: 12.5px;
+      font-family: inherit;
+    }
+
+    .split-selector .split-meta {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11.5px;
+      color: #93c5fd;
+    }
+
+    .split-panes {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      width: 100%;
+      height: calc(100% - 48px);
+    }
+
+    .split-panes iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      border-right: 1px solid var(--border);
+      background: #000;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TOP NAVIGATION -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-logo">🪐</div>
+      <div class="brand-text">
+        <h1>Antigravity Uzay Benchmark</h1>
+        <span>5 Model • Tek Prompt • Gerçek Transcript Telemetrisi</span>
+      </div>
+    </div>
+
+    <!-- MODEL TABS -->
+    <div class="model-switcher" id="model-tabs"></div>
+
+    <!-- VIEW MODE BUTTONS -->
+    <div class="view-modes">
+      <button class="mode-btn active" id="btn-mode-sim" onclick="setViewMode('sim')">
+        🚀 Canlı Simülasyon
+      </button>
+      <button class="mode-btn" id="btn-mode-split" onclick="setViewMode('split')">
+        ⚔️ Yan Yana (2 Model)
+      </button>
+      <button class="mode-btn" id="btn-mode-dash" onclick="setViewMode('dash')">
+        📊 Süre & Token Analizi
+      </button>
+    </div>
+  </header>
+
+  <main class="viewport">
+    <!-- 1. LIVE FULLSCREEN SIMULATION -->
+    <section class="view-section active" id="sim-view">
+      <iframe id="sim-frame" src="models/gemini-4-argon-medium.html" allow="fullscreen"></iframe>
+
+      <!-- THOUGHT PROCESS POPOVER -->
+      <div class="thought-drawer" id="thought-drawer">
+        <h4>
+          <span id="td-title">Model Düşünme Süreci (Transcript.jsonl)</span>
+          <button class="mini-btn" onclick="toggleThoughtDrawer()">Kapat ✕</button>
+        </h4>
+        <div class="thought-quote" id="td-quote"></div>
+        <div class="thought-verdict" id="td-verdict"></div>
+      </div>
+
+      <!-- FLOATING TELEMETRY BAR -->
+      <div class="telemetry-bar" id="telemetry-bar">
+        <div class="tele-header">
+          <span class="model-dot" id="tele-dot"></span>
+          <div>
+            <div class="tele-title" id="tele-name">-</div>
+            <div class="tele-sub" id="tele-family">-</div>
+          </div>
+        </div>
+
+        <div class="tele-details">
+          <div class="tele-stat">
+            <span class="tele-stat-label">🧠 Düşünme + Kod Süresi</span>
+            <span class="tele-stat-val" id="tele-time">-</span>
+          </div>
+          <div class="tele-stat">
+            <span class="tele-stat-label">🔥 Output Token (Düşünme+Kod)</span>
+            <span class="tele-stat-val" id="tele-out-tok">-</span>
+          </div>
+          <div class="tele-stat">
+            <span class="tele-stat-label">📥 Input + Cache Token</span>
+            <span class="tele-stat-val" id="tele-in-tok">-</span>
+          </div>
+          <div class="tele-stat">
+            <span class="tele-stat-label">⚡ Toplam Yakılan Token</span>
+            <span class="tele-stat-val" id="tele-tot-tok">-</span>
+          </div>
+          <div class="tele-stat">
+            <span class="tele-stat-label">📝 Üretilen Kod</span>
+            <span class="tele-stat-val" id="tele-code">-</span>
+          </div>
+        </div>
+
+        <div class="tele-actions">
+          <button class="mini-btn" onclick="toggleThoughtDrawer()">💭 Nasıl Düşündü?</button>
+          <button class="mini-btn" onclick="reloadSim()">↻ Yeniden Başlat</button>
+          <button class="mini-btn" onclick="toggleTelemetryMinimize()" id="min-btn">Küçült</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. SPLIT-SCREEN SIDE BY SIDE VIEW -->
+    <section class="view-section" id="split-view">
+      <div class="split-toolbar">
+        <div class="split-selector">
+          <span>Sol Sahne:</span>
+          <select id="split-left-select" onchange="updateSplitView()"></select>
+          <span class="split-meta" id="split-left-meta"></span>
+        </div>
+        <div class="split-selector">
+          <span>Sağ Sahne:</span>
+          <select id="split-right-select" onchange="updateSplitView()"></select>
+          <span class="split-meta" id="split-right-meta"></span>
+        </div>
+      </div>
+      <div class="split-panes">
+        <iframe id="split-left-frame"></iframe>
+        <iframe id="split-right-frame"></iframe>
+      </div>
+    </section>
+
+    <!-- 3. BENCHMARK ANALYTICS DASHBOARD -->
+    <section class="view-section" id="dashboard-view">
+      <div class="dash-container">
+        <div class="hero-banner">
+          <div>
+            <h2>Antigravity CLI — 5 Model Uzay Simülasyonu Benchmark Raporu</h2>
+            <p>
+              Tüm modellere aynı anda (Swarm paralel çalıştırma ile) sıfır dosya okuma ve tek seferde
+              <strong>3B Etkileşimli Güneş Sistemi & N-Cisim Kütleçekim/Kara Delik Simülasyonu</strong> yazma görevi verildi.
+              Aşağıdaki tüm süre ve token verileri doğrudan her modelin kendi <code>transcript.jsonl</code> sistem kayıtlarından çıkarılmıştır.
+            </p>
+          </div>
+          <button class="mode-btn active" onclick="setViewMode('sim')">
+            🚀 Canlı Simülasyonlara Dön
+          </button>
+        </div>
+
+        <!-- KPI SUMMARY CARDS -->
+        <div class="kpi-strip">
+          <div class="kpi-card">
+            <div class="kpi-label">En Derin Düşünen & Görsel Şampiyon</div>
+            <div class="kpi-value" style="color: var(--opus)">Claude Opus 5.5</div>
+            <div class="kpi-sub">684 sn düşünme • 78,509 output token • GLSL Lensing & Bloom</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">En Kapsamlı Kod & Mimari Verimlilik</div>
+            <div class="kpi-value" style="color: var(--argon)">Gemini 4 Argon</div>
+            <div class="kpi-sub">1,711 satır (59.1 KB) • Sadece 208 sn & 65,137 toplam token</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Hız / Performans Şampiyonu</div>
+            <div class="kpi-value" style="color: var(--flash)">Gemini 3.8 Flash</div>
+            <div class="kpi-sub">120 sn (2 dk) • 1,238 satır tam 3B simülasyon • 143.9 tok/sn</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Öz-Denetim (Self-Correction)</div>
+            <div class="kpi-value" style="color: var(--sonnet)">Claude Sonnet 5.5</div>
+            <div class="kpi-sub">240 sn • Kendi yazdığı JS hatasını fark edip anında düzeltti</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Toplam Harcanan Benchmark Tokenı</div>
+            <div class="kpi-value">522,868</div>
+            <div class="kpi-sub">5 modelin toplam Input + Output + Cache Read kullanımı</div>
+          </div>
+        </div>
+
+        <!-- BAR CHARTS -->
+        <div class="charts-grid">
+          <div class="chart-card">
+            <h3>
+              <span>⏱️ Düşünme & Kod Üretim Süresi (Saniye)</span>
+              <span style="font-size:11px;color:var(--text-muted)">Daha kısa = Daha hızlı</span>
+            </h3>
+            <div class="chart-desc">Modelin görevi alıp HTML dosyasını diske yazmayı bitirene kadar geçen süre</div>
+            <div id="chart-time"></div>
+          </div>
+
+          <div class="chart-card">
+            <h3>
+              <span>🧠 Yakılan Output Token (Düşünme + Kod)</span>
+              <span style="font-size:11px;color:var(--text-muted)">Chain-of-Thought + HTML/JS</span>
+            </h3>
+            <div class="chart-desc">Modelin içsel akıl yürütme (thinking) ve kod çıktısı için ürettiği toplam token</div>
+            <div id="chart-output-tokens"></div>
+          </div>
+
+          <div class="chart-card">
+            <h3>
+              <span>🔥 Toplam Token Maliyeti (Input + Output + Cache)</span>
+              <span style="font-size:11px;color:var(--text-muted)">Tüm adımlar dahil</span>
+            </h3>
+            <div class="chart-desc">Sistemin ilgili model ajanında tükettiği kümülatif token miktarı</div>
+            <div id="chart-total-tokens"></div>
+          </div>
+
+          <div class="chart-card">
+            <h3>
+              <span>📝 Üretilen Tek Dosya Kod Hacmi (Satır & KB)</span>
+              <span style="font-size:11px;color:var(--text-muted)">Satır sayısı</span>
+            </h3>
+            <div class="chart-desc">Tek HTML dosyası içinde üretilen toplam satır sayısı ve bayt büyüklüğü</div>
+            <div id="chart-lines"></div>
+          </div>
+        </div>
+
+        <!-- COMPARISON TABLE -->
+        <div class="table-card">
+          <h3>📋 5 Model Karşılaştırmalı Telemetri Tablosu</h3>
+          <table class="bench-table">
+            <thead>
+              <tr>
+                <th>Model</th>
+                <th>Düşünme + Kod Süresi</th>
+                <th>Toplam Süre</th>
+                <th>Output Token (Düşünme+Kod)</th>
+                <th>Input Token</th>
+                <th>Cache Token</th>
+                <th>Toplam Token</th>
+                <th>Üretim Hızı</th>
+                <th>Kod Boyutu</th>
+                <th>Canlı Test</th>
+              </tr>
+            </thead>
+            <tbody id="bench-table-body"></tbody>
+          </table>
+        </div>
+
+        <!-- DETAILED MODEL BREAKDOWN CARDS -->
+        <div class="model-cards-grid" id="model-cards-grid"></div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const BENCHMARK_MODELS = [
+      {
+        id: 'gemini-4-argon-medium',
+        shortName: 'Gemini 4 Argon',
+        name: 'Gemini 4 Argon (Medium)',
+        family: 'Google Gemini 4 • Medium Effort',
+        color: '#38bdf8',
+        file: 'models/gemini-4-argon-medium.html',
+        thinkingSec: 208,
+        totalSec: 219,
+        inputTokens: 43167,
+        cacheTokens: 0,
+        outputTokens: 21970,
+        codeStepOutputTokens: 21903,
+        totalTokens: 65137,
+        tokPerSec: 105.6,
+        lines: 1711,
+        bytes: 59135,
+        physics: 'Alt-Adımlı Symplectic / Velocity-Verlet N-Cisim + Momentum Korunumlu Çarpışma',
+        graphics: 'Three.js r128, Prosedürel Gezegen/Halka/Korona Dokuları, Sci-Fi Cam HUD (Orbitron + JetBrains Mono), Akresyon Diskli Kara Delik',
+        thought: 'Initial plan: Create an HTML file and signal completion. The file should be visually engaging.',
+        verdict: 'En yüksek kod yoğunluğu (1.711 satır, 59.1 KB) ve müthiş token verimliliği! Opus\'un üçte biri sürede (3 dk 28 sn) ve üçte biri toplam token (65.1K) harcayarak kapsamlı bir Sci-Fi HUD, prosedürel gezegen dokuları, kuyruklu yıldız/kara delik fırlatıcı ve kararlı N-cisim fiziği üretti.'
+      },
+      {
+        id: 'claude-opus-5-5-medium',
+        shortName: 'Claude Opus 5.5',
+        name: 'Claude Opus 5.5 (Medium)',
+        family: 'Anthropic Claude 5.5 • Medium Effort',
+        color: '#a855f7',
+        file: 'models/claude-opus-5-5-medium.html',
+        thinkingSec: 684,
+        totalSec: 696,
+        inputTokens: 109567,
+        cacheTokens: 0,
+        outputTokens: 78509,
+        codeStepOutputTokens: 78115,
+        totalTokens: 188076,
+        tokPerSec: 114.8,
+        lines: 987,
+        bytes: 64225,
+        physics: 'Uyarlamalı Alt-Adımlı Velocity-Verlet (Astronomik Birimler: AU, Yıl, M☉, G=4π²)',
+        graphics: 'Three.js r160 ES Modules, UnrealBloomPass, Özel GLSL Kara Delik Mercekleme (Gravitational Lensing) & Güneş Korona/Atmosfer Shader\'ları',
+        thought: 'For the physics I\'ll work in AU, years and solar masses, with G set to 4π², and integrate using velocity Verlet with substeps. The Moon\'s orbit is tiny at 0.00257 AU, so it will need a smaller timestep... Now I\'m working out the black hole sizing: its radius scales with mass as 0.09 times the mass to the 0.45 power in AU...',
+        verdict: 'En derin düşünme süreci (78,509 output token, 11 dk 24 sn). Sadece sahneyi kurmakla kalmayıp özel GLSL shader\'ları ile kütleçekimsel mercekleme (gravitational lensing), UnrealBloomPass parlaması, Samanyolu kuşağı ve sürükle-fırlat yörünge önizlemesi inşa etti.'
+      },
+      {
+        id: 'claude-sonnet-5-5-medium',
+        shortName: 'Claude Sonnet 5.5',
+        name: 'Claude Sonnet 5.5 (Medium)',
+        family: 'Anthropic Claude 5.5 • Medium Effort',
+        color: '#f59e0b',
+        file: 'models/claude-sonnet-5-5-medium.html',
+        thinkingSec: 231,
+        totalSec: 240,
+        inputTokens: 47016,
+        cacheTokens: 59537,
+        outputTokens: 30580,
+        codeStepOutputTokens: 29316,
+        totalTokens: 137133,
+        tokPerSec: 127.3,
+        lines: 523,
+        bytes: 35580,
+        physics: 'Velocity-Verlet (Leapfrog) + Hill Küresi Dengelenmiş Dünya-Ay Yörüngesi',
+        graphics: 'Three.js r128, Sıfırdan Yazılmış Özel 3B Kamera Kontrolcüsü, Prosedürel Canvas Dokuları, 2.500 Parçacıklı Asteroid Kuşağı',
+        thought: 'I\'m settling on the Moon\'s setup: Earth gets mass 4 so its Hill sphere is large enough, and the Moon sits at a radius of 2.2... I\'ve spotted a bug in addBody: the early star/giant block calls the returned texture as if it were a function, which would throw a TypeError. I need to fix that...',
+        verdict: '4 dakikada tamamladı ve çok önemli bir öz-denetim (self-correction) sergiledi: İlk dosyayı yazdıktan sonra kendi kodunu zihninde kontrol ederken `TEX.gunes()()` satırındaki TypeError hatasını yakalayıp `edit_file` ile anında onardı.'
+      },
+      {
+        id: 'gemini-3.8-flash-medium',
+        shortName: 'Gemini 3.8 Flash',
+        name: 'Gemini 3.8 Flash (Medium)',
+        family: 'Google Gemini 3.8 • Medium Effort',
+        color: '#10b981',
+        file: 'models/gemini-3.8-flash-medium.html',
+        thinkingSec: 120,
+        totalSec: 126,
+        inputTokens: 40454,
+        cacheTokens: 25658,
+        outputTokens: 17265,
+        codeStepOutputTokens: 17125,
+        totalTokens: 83377,
+        tokPerSec: 143.9,
+        lines: 1238,
+        bytes: 48812,
+        physics: 'Alt-Adımlı N-Cisim Kütleçekim + Kara Delik Olay Ufku & Yutma Mekaniği',
+        graphics: 'Three.js r128 + OrbitControls, Glassmorphism HUD, Prosedürel Canvas Dokuları, Yıldız & Asteroid Parçacık Sistemleri',
+        thought: 'Planning the simulation with detailed components: a sun with procedural glow, planets with procedural textures, an asteroid belt as a particle system, and a starfield. N-body gravity will be implemented with Verlet or RK4 methods...',
+        verdict: 'Hız ve fiyat/performans şampiyonu! Sadece 2 dakikada (120 sn) ve 17.2K output token ile 1.238 satırlık (48.8 KB) tam özellikli, modern cam panelli ve çok akıcı bir 3B Güneş Sistemi simülasyonu üretti.'
+      },
+      {
+        id: 'gpt-oss-120b-medium',
+        shortName: 'GPT-OSS 120B',
+        name: 'GPT-OSS 120B (Medium)',
+        family: 'Open-Weights GPT-OSS • Medium Effort',
+        color: '#f43f5e',
+        file: 'models/gpt-oss-120b-medium.html',
+        thinkingSec: 55,
+        totalSec: 60,
+        inputTokens: 18279,
+        cacheTokens: 23744,
+        outputTokens: 7122,
+        codeStepOutputTokens: 2899,
+        totalTokens: 49145,
+        tokPerSec: 118.7,
+        lines: 185,
+        bytes: 8258,
+        physics: 'Basit Euler Entegrasyonu (Güneş çekim dizisine eklenmemiş, gezegenler serbest uçuyor)',
+        graphics: 'Three.js Temel Renkli Küreler, Basit HTML Buton/Slider Kontrolleri',
+        thought: 'We need to fulfill assignment: write a single HTML file containing a massive interactive 3D solar system with N-body physics etc. It\'s huge. But we can cheat?... I\'ll craft a reasonable code with placeholders for bodies, simple integration using Euler.',
+        verdict: '1 dakikada bitirerek en hızlı model oldu fakat karmaşık tek-dosya mühendislik görevinde zorlandı: İlk adımda boş yanıt hatası aldı, ikinci adımda ise 185 satırlık çok temel bir prototip yazdı (Güneş\'i çekim dizisine eklemeyi unuttu ve r152\'de kaldırılmış OrbitControls yolunu kullandı).'
+      }
+    ];
+
+    let activeModelId = BENCHMARK_MODELS[0].id;
+    let activeViewMode = 'sim';
+
+    function formatTime(sec) {
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      return m > 0 ? `${sec} sn (${m}dk ${s}sn)` : `${sec} sn`;
+    }
+
+    function formatNum(n) {
+      return n.toLocaleString('tr-TR');
+    }
+
+    function renderModelTabs() {
+      const container = document.getElementById('model-tabs');
+      container.innerHTML = BENCHMARK_MODELS.map((m, idx) => `
+        <button class="model-tab ${m.id === activeModelId ? 'active' : ''}" onclick="selectModel('${m.id}')" title="Kısayol: ${idx + 1} tuşu">
+          <span class="model-dot" style="background:${m.color};box-shadow:0 0 8px ${m.color}"></span>
+          <span>${m.shortName}</span>
+          <span class="model-pill-meta">${m.thinkingSec}sn • ${(m.outputTokens/1000).toFixed(1)}K out</span>
+        </button>
+      `).join('');
+    }
+
+    function selectModel(modelId) {
+      activeModelId = modelId;
+      const m = BENCHMARK_MODELS.find(x => x.id === modelId);
+      if (!m) return;
+
+      renderModelTabs();
+
+      const frame = document.getElementById('sim-frame');
+      if (frame.getAttribute('src') !== m.file) {
+        frame.setAttribute('src', m.file);
+      }
+
+      document.getElementById('tele-dot').style.background = m.color;
+      document.getElementById('tele-dot').style.boxShadow = `0 0 10px ${m.color}`;
+      document.getElementById('tele-name').textContent = m.name;
+      document.getElementById('tele-family').textContent = m.family;
+      document.getElementById('tele-time').textContent = formatTime(m.thinkingSec);
+      document.getElementById('tele-out-tok').textContent = `${formatNum(m.outputTokens)} tok (${m.tokPerSec} t/s)`;
+      document.getElementById('tele-in-tok').textContent = `${formatNum(m.inputTokens)} in + ${formatNum(m.cacheTokens)} cache`;
+      document.getElementById('tele-tot-tok').textContent = `${formatNum(m.totalTokens)} tok`;
+      document.getElementById('tele-code').textContent = `${formatNum(m.lines)} satır (${(m.bytes / 1024).toFixed(1)} KB)`;
+
+      document.getElementById('td-title').textContent = `${m.name} — Gerçek Düşünme Kaydı & Değerlendirme`;
+      document.getElementById('td-quote').textContent = `"${m.thought}"`;
+      document.getElementById('td-verdict').innerHTML = `<strong>Analiz:</strong> ${m.verdict}<br><span style="color:#93c5fd;font-size:11.5px"><strong>Fizik:</strong> ${m.physics} | <strong>Grafik:</strong> ${m.graphics}</span>`;
+
+      if (activeViewMode !== 'sim') {
+        setViewMode('sim');
+      }
+    }
+
+    function setViewMode(mode) {
+      activeViewMode = mode;
+      document.getElementById('btn-mode-sim').classList.toggle('active', mode === 'sim');
+      document.getElementById('btn-mode-split').classList.toggle('active', mode === 'split');
+      document.getElementById('btn-mode-dash').classList.toggle('active', mode === 'dash');
+
+      document.getElementById('sim-view').classList.toggle('active', mode === 'sim');
+      document.getElementById('split-view').classList.toggle('active', mode === 'split');
+      document.getElementById('dashboard-view').classList.toggle('active', mode === 'dash');
+
+      if (mode === 'split') {
+        updateSplitView();
+      }
+    }
+
+    function toggleThoughtDrawer() {
+      document.getElementById('thought-drawer').classList.toggle('open');
+    }
+
+    function toggleTelemetryMinimize() {
+      const bar = document.getElementById('telemetry-bar');
+      bar.classList.toggle('minimized');
+      document.getElementById('min-btn').textContent = bar.classList.contains('minimized') ? 'Genişlet' : 'Küçült';
+    }
+
+    function reloadSim() {
+      const frame = document.getElementById('sim-frame');
+      frame.src = frame.src;
+    }
+
+    function initSplitSelectors() {
+      const leftSel = document.getElementById('split-left-select');
+      const rightSel = document.getElementById('split-right-select');
+      const optionsHtml = BENCHMARK_MODELS.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+      leftSel.innerHTML = optionsHtml;
+      rightSel.innerHTML = optionsHtml;
+      leftSel.value = 'claude-opus-5-5-medium';
+      rightSel.value = 'gemini-4-argon-medium';
+    }
+
+    function updateSplitView() {
+      const leftId = document.getElementById('split-left-select').value;
+      const rightId = document.getElementById('split-right-select').value;
+      const leftM = BENCHMARK_MODELS.find(x => x.id === leftId);
+      const rightM = BENCHMARK_MODELS.find(x => x.id === rightId);
+
+      const leftFrame = document.getElementById('split-left-frame');
+      const rightFrame = document.getElementById('split-right-frame');
+
+      if (leftM && leftFrame.getAttribute('src') !== leftM.file) {
+        leftFrame.setAttribute('src', leftM.file);
+      }
+      if (rightM && rightFrame.getAttribute('src') !== rightM.file) {
+        rightFrame.setAttribute('src', rightM.file);
+      }
+
+      if (leftM) {
+        document.getElementById('split-left-meta').textContent = `${leftM.thinkingSec}sn • ${formatNum(leftM.outputTokens)} out tok • ${leftM.lines} satır`;
+      }
+      if (rightM) {
+        document.getElementById('split-right-meta').textContent = `${rightM.thinkingSec}sn • ${formatNum(rightM.outputTokens)} out tok • ${rightM.lines} satır`;
+      }
+    }
+
+    function renderBarChart(containerId, metricFn, labelFn, maxVal) {
+      const el = document.getElementById(containerId);
+      el.innerHTML = BENCHMARK_MODELS.map(m => {
+        const val = metricFn(m);
+        const pct = Math.max(4, Math.min(100, (val / maxVal) * 100));
+        return `
+          <div class="bar-row">
+            <div class="bar-label-line">
+              <span style="display:flex;align-items:center;gap:7px">
+                <span class="model-dot" style="background:${m.color}"></span>
+                ${m.name}
+              </span>
+              <span class="mono">${labelFn(m)}</span>
+            </div>
+            <div class="bar-track">
+              <div class="bar-fill" style="width:${pct}%;background:${m.color}"></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderDashboard() {
+      renderBarChart(
+        'chart-time',
+        m => m.thinkingSec,
+        m => formatTime(m.thinkingSec),
+        700
+      );
+      renderBarChart(
+        'chart-output-tokens',
+        m => m.outputTokens,
+        m => `${formatNum(m.outputTokens)} tok`,
+        80000
+      );
+      renderBarChart(
+        'chart-total-tokens',
+        m => m.totalTokens,
+        m => `${formatNum(m.totalTokens)} tok`,
+        190000
+      );
+      renderBarChart(
+        'chart-lines',
+        m => m.lines,
+        m => `${formatNum(m.lines)} satır (${(m.bytes / 1024).toFixed(1)} KB)`,
+        1800
+      );
+
+      const tbody = document.getElementById('bench-table-body');
+      tbody.innerHTML = BENCHMARK_MODELS.map(m => `
+        <tr>
+          <td>
+            <div style="display:flex;align-items:center;gap:8px;font-weight:700">
+              <span class="model-dot" style="background:${m.color}"></span>
+              ${m.name}
+            </div>
+          </td>
+          <td class="num">${formatTime(m.thinkingSec)}</td>
+          <td class="num">${formatTime(m.totalSec)}</td>
+          <td class="num" style="color:#93c5fd">${formatNum(m.outputTokens)}</td>
+          <td class="num">${formatNum(m.inputTokens)}</td>
+          <td class="num">${formatNum(m.cacheTokens)}</td>
+          <td class="num" style="color:#fcd34d">${formatNum(m.totalTokens)}</td>
+          <td class="num">${m.tokPerSec} tok/s</td>
+          <td class="num">${formatNum(m.lines)} satır (${(m.bytes / 1024).toFixed(1)} KB)</td>
+          <td>
+            <button class="launch-sim-btn" onclick="selectModel('${m.id}')">Simülasyonu Aç →</button>
+          </td>
+        </tr>
+      `).join('');
+
+      const cardsGrid = document.getElementById('model-cards-grid');
+      cardsGrid.innerHTML = BENCHMARK_MODELS.map(m => `
+        <div class="model-detail-card">
+          <div class="mdc-head">
+            <div>
+              <div class="mdc-title">
+                <span class="model-dot" style="background:${m.color}"></span>
+                ${m.name}
+              </div>
+              <div class="mdc-family">${m.family}</div>
+            </div>
+            <button class="launch-sim-btn" onclick="selectModel('${m.id}')">🚀 Canlı Aç</button>
+          </div>
+          <div class="mdc-badges">
+            <span class="mdc-badge">⏱ ${formatTime(m.thinkingSec)}</span>
+            <span class="mdc-badge">🧠 ${formatNum(m.outputTokens)} out tok</span>
+            <span class="mdc-badge">⚡ ${formatNum(m.totalTokens)} toplam tok</span>
+            <span class="mdc-badge">📝 ${formatNum(m.lines)} satır (${(m.bytes/1024).toFixed(1)} KB)</span>
+          </div>
+          <div class="mdc-spec">
+            <div><strong>Fizik Motoru:</strong> ${m.physics}</div>
+            <div style="margin-top:4px"><strong>Grafik & UI:</strong> ${m.graphics}</div>
+          </div>
+          <div class="mdc-thought">"${m.thought}"</div>
+          <div style="font-size:12.5px;line-height:1.55;color:#e2e8f0">${m.verdict}</div>
+        </div>
+      `).join('');
+    }
+
+    window.addEventListener('keydown', e => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+      if (e.key >= '1' && e.key <= '5') {
+        const idx = parseInt(e.key, 10) - 1;
+        if (BENCHMARK_MODELS[idx]) selectModel(BENCHMARK_MODELS[idx].id);
+      }
+    });
+
+    initSplitSelectors();
+    renderDashboard();
+    selectModel(activeModelId);
+  </script>
+</body>
+</html>

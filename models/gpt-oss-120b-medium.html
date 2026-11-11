@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>3B Etkileşimli Güneş Sistemi & N‑Cisim Simülasyonu</title>
+  <style>
+    body { margin:0; overflow:hidden; font-family:Arial,Helvetica,sans-serif; background:#000; color:#fff; }
+    #hud { position:absolute; top:10px; left:10px; background:rgba(0,0,0,0.5); padding:8px; border-radius:4px; font-size:14px; }
+    #controls { position:absolute; top:10px; right:10px; background:rgba(0,0,0,0.5); padding:8px; border-radius:4px; }
+    button { margin:2px; }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+  <div id="hud"></div>
+  <div id="controls">
+    <label>Zaman Hızı: <input type="range" id="timeScale" min="0" max="5" step="0.2" value="1"></label>
+    <button id="pauseBtn">Duraklat</button>
+    <button id="addBlackHoleBtn">Kara Delik Ekle</button>
+  </div>
+  <script>
+    // ---- temel üç.js ayarları ----
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1e7);
+    camera.position.set(0, 200, 800);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    // Işık ve Güneş
+    const sunGeometry = new THREE.SphereGeometry(50, 32, 32);
+    const sunMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+    const sun = new THREE.Mesh(sunGeometry, sunMaterial);
+    scene.add(sun);
+    const pointLight = new THREE.PointLight(0xffffff, 2, 0);
+    pointLight.position.set(0,0,0);
+    scene.add(pointLight);
+    // Gezegen verileri
+    const planetDefs = [
+      { name: 'Merkür', radius: 5, distance: 70, color: 0xaaaaaa, mass: 0.33 },
+      { name: 'Venüs', radius: 12, distance: 100, color: 0xffaa00, mass: 4.87 },
+      { name: 'Dünya', radius: 13, distance: 140, color: 0x0000ff, mass: 5.97 },
+      { name: 'Ay', radius: 3, distance: 144, color: 0x888888, mass: 0.073, parent: 'Dünya' },
+      { name: 'Mars', radius: 7, distance: 180, color: 0xff0000, mass: 0.642 },
+      { name: 'Jüpiter', radius: 30, distance: 260, color: 0xff8800, mass: 1898 },
+      { name: 'Satürn', radius: 25, distance: 340, color: 0xffddaa, mass: 568, rings: true },
+      { name: 'Uranüs', radius: 22, distance: 400, color: 0x00aaff, mass: 86.8 },
+      { name: 'Neptün', radius: 22, distance: 460, color: 0x0000ff, mass: 102 }
+    ];
+    const G = 6.67430e-3; // ölçeklenmiş çekim sabiti
+    const bodies = [];
+    // gezegen oluşturma fonksiyonu
+    function createBody(def) {
+      const geometry = new THREE.SphereGeometry(def.radius, 16, 16);
+      const material = new THREE.MeshStandardMaterial({ color: def.color });
+      const mesh = new THREE.Mesh(geometry, material);
+      const angle = Math.random() * Math.PI * 2;
+      const x = def.distance * Math.cos(angle);
+      const z = def.distance * Math.sin(angle);
+      mesh.position.set(x, 0, z);
+      // basit dairesel başlangıç hızı
+      const speed = Math.sqrt(G * 1000 / def.distance); // G*mass(sun)/r
+      mesh.userData = {
+        name: def.name,
+        mass: def.mass,
+        velocity: new THREE.Vector3(-speed * Math.sin(angle), 0, speed * Math.cos(angle)),
+        trail: []
+      };
+      scene.add(mesh);
+      bodies.push(mesh);
+    }
+    planetDefs.forEach(d => createBody(d));
+    // Kara delik ekleme
+    function addBlackHole() {
+      const bh = new THREE.Mesh(
+        new THREE.SphereGeometry(8, 8, 8),
+        new THREE.MeshBasicMaterial({ color: 0x000000 })
+      );
+      bh.position.set(0,0,0); // başlangıçta ortada, sonra fareyle yerleştirilebilir (basit)
+      bh.userData = { name: 'Kara Delik', mass: 1e5, isBlackHole: true, velocity: new THREE.Vector3() };
+      scene.add(bh);
+      bodies.push(bh);
+    }
+    // HUD ve kontroller
+    const hud = document.getElementById('hud');
+    const timeScaleSlider = document.getElementById('timeScale');
+    const pauseBtn = document.getElementById('pauseBtn');
+    const addBHBtn = document.getElementById('addBlackHoleBtn');
+    let paused = false;
+    pauseBtn.onclick = () => { paused = !paused; pauseBtn.textContent = paused ? 'Devam' : 'Duraklat'; };
+    addBHBtn.onclick = addBlackHole;
+    // animasyon döngüsü
+    let last = performance.now();
+    function animate() {
+      requestAnimationFrame(animate);
+      const now = performance.now();
+      const dt = (now - last) / 1000; // saniye
+      last = now;
+      if (!paused) {
+        const scale = parseFloat(timeScaleSlider.value);
+        // basit N‑body entegrasyonu (Euler)
+        for (let i = 0; i < bodies.length; i++) {
+          const bi = bodies[i];
+          const acc = new THREE.Vector3();
+          for (let j = 0; j < bodies.length; j++) {
+            if (i === j) continue;
+            const bj = bodies[j];
+            const dir = new THREE.Vector3().subVectors(bj.position, bi.position);
+            const r2 = dir.lengthSq() + 1e-6;
+            const force = (G * bj.userData.mass) / r2;
+            acc.add(dir.normalize().multiplyScalar(force));
+          }
+          // güncelle
+          bi.userData.velocity.add(acc.multiplyScalar(dt * scale));
+          bi.position.add(bi.userData.velocity.clone().multiplyScalar(dt * scale));
+          // kara delik yutma kontrolü
+          if (bi.userData.isBlackHole) continue;
+          const bh = bodies.find(b=>b.userData.isBlackHole);
+          if (bh) {
+            const toBH = new THREE.Vector3().subVectors(bh.position, bi.position);
+            if (toBH.length() < 12) {
+              // yutulmuş, sahneden kaldır
+              scene.remove(bi);
+              bodies.splice(i,1);
+              i--;
+              continue;
+            }
+          }
+          // yörünge izi
+          bi.userData.trail.push(bi.position.clone());
+          if (bi.userData.trail.length > 200) bi.userData.trail.shift();
+        }
+      }
+      // izleri çiz (basit line)
+      // önceki izleri temizle
+      const existing = scene.getObjectByName('trails');
+      if (existing) scene.remove(existing);
+      const trailGroup = new THREE.Group();
+      trailGroup.name = 'trails';
+      bodies.forEach(b=>{
+        const points = b.userData.trail;
+        if (points.length < 2) return;
+        const geometry = new THREE.BufferGeometry().setFromPoints(points);
+        const material = new THREE.LineBasicMaterial({ color: 0xffffff, opacity:0.6, transparent:true });
+        const line = new THREE.Line(geometry, material);
+        trailGroup.add(line);
+      });
+      scene.add(trailGroup);
+      controls.update();
+      renderer.render(scene, camera);
+      // HUD güncelle
+      const target = bodies.find(b=>b.userData.name===selectedName);
+      if (target) {
+        const vel = target.userData.velocity.length().toFixed(2);
+        const dist = target.position.length().toFixed(2);
+        hud.innerHTML = `Seçili: ${target.userData.name}<br>Hız: ${vel}<br>Uzaklık: ${dist}<br>FPS: ${Math.round(1/dt)}`;
+      } else {
+        hud.innerHTML = `FPS: ${Math.round(1/dt)}`;
+      }
+    }
+    animate();
+    // gezegen seçme (raycast)
+    let selectedName = null;
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    function onClick(event){
+      mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+      raycaster.setFromCamera(mouse, camera);
+      const intersects = raycaster.intersectObjects(bodies);
+      if (intersects.length>0){
+        selectedName = intersects[0].object.userData.name;
+        const pos = intersects[0].object.position;
+        controls.target.copy(pos);
+      }
+    }
+    window.addEventListener('click', onClick);
+    window.addEventListener('resize',()=>{
+      camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth,window.innerHeight);
+    });
+  </script>
+</body>
+</html>

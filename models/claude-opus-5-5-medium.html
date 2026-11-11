@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Güneş Sistemi — 3B N-Cisim Kütleçekim Simülasyonu</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;color:#dfe7ff}
+  canvas{display:block}
+  #loading{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 50%,#101a3a,#000 70%);z-index:100;transition:opacity .8s}
+  #loading .sun{width:80px;height:80px;border-radius:50%;background:radial-gradient(circle,#fff6c8,#ffb43a 45%,#ff6a00 70%,transparent 72%);box-shadow:0 0 60px 20px rgba(255,150,40,.5);animation:pulse 1.4s ease-in-out infinite}
+  #loading p{margin-top:28px;letter-spacing:3px;font-size:13px;color:#9fb4ff}
+  @keyframes pulse{50%{transform:scale(1.12);box-shadow:0 0 90px 30px rgba(255,150,40,.6)}}
+  .panel{position:fixed;background:rgba(8,12,28,.74);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(120,160,255,.22);border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,.5);padding:12px 14px;z-index:10;max-height:calc(100vh - 70px);overflow-y:auto}
+  .panel::-webkit-scrollbar{width:6px}.panel::-webkit-scrollbar-thumb{background:rgba(120,160,255,.3);border-radius:3px}
+  #ui-left{top:12px;left:12px;width:292px}
+  #ui-right{top:12px;right:12px;width:310px}
+  h1{font-size:16px;font-weight:700;color:#fff;margin-bottom:8px;line-height:1.25}
+  h1 span{display:block;font-size:11px;font-weight:500;color:#8fa8ff;letter-spacing:1.5px;text-transform:uppercase}
+  h2{font-size:11.5px;text-transform:uppercase;letter-spacing:1.4px;color:#8fb0ff;margin:12px 0 7px;font-weight:700;display:flex;justify-content:space-between;align-items:center}
+  h2 small{color:#ffd27a;font-size:11px;letter-spacing:0}
+  section{border-top:1px solid rgba(120,160,255,.12);padding-top:2px}
+  button{background:rgba(40,60,120,.45);color:#dfe7ff;border:1px solid rgba(120,160,255,.3);border-radius:8px;padding:6px 8px;font-size:12px;cursor:pointer;transition:all .15s;font-family:inherit}
+  button:hover{background:rgba(70,100,190,.6);border-color:rgba(160,190,255,.7)}
+  button.active{background:linear-gradient(135deg,#3d6cff,#7a4dff);border-color:#a9bcff;color:#fff;box-shadow:0 0 12px rgba(100,120,255,.5)}
+  button.danger.active,#btnLaunch.active{background:linear-gradient(135deg,#ff6a3d,#ff2d6f);border-color:#ffb3a0;box-shadow:0 0 14px rgba(255,80,80,.55)}
+  .btnrow{display:flex;gap:5px;flex-wrap:wrap}
+  .btnrow button{flex:1}
+  .typegrid{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:8px}
+  .slider{display:block;font-size:12px;margin:6px 0;color:#c4d0f5}
+  .slider b{float:right;color:#ffd27a}
+  input[type=range]{width:100%;margin-top:5px;accent-color:#6f86ff;cursor:pointer}
+  .kv{display:flex;justify-content:space-between;font-size:12px;margin:5px 0;color:#aab8e0}
+  .kv b{color:#fff;font-weight:600;font-variant-numeric:tabular-nums}
+  .help{font-size:11px;color:#8d9bc4;line-height:1.45;margin-top:7px}
+  .help b{color:#cdd8ff}
+  .checks{display:grid;grid-template-columns:1fr 1fr;gap:4px 8px;font-size:12px}
+  .checks label{display:flex;align-items:center;gap:6px;cursor:pointer;color:#c4d0f5}
+  .checks input{accent-color:#6f86ff}
+  #bodyList{max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:3px;padding-right:3px}
+  .bitem{display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:8px;cursor:pointer;font-size:12.5px;border:1px solid transparent;transition:all .12s}
+  .bitem:hover{background:rgba(80,110,200,.25)}
+  .bitem.sel{background:rgba(90,120,255,.3);border-color:rgba(150,180,255,.6)}
+  .bitem .dot{width:11px;height:11px;border-radius:50%;flex:none;box-shadow:0 0 6px currentColor}
+  .bitem .nm{flex:1}
+  .bitem .tp{font-size:10.5px;color:#8d9bc4}
+  #telemetry{font-size:12px;background:rgba(0,0,0,.25);border-radius:10px;padding:8px 10px;margin-bottom:8px;min-height:60px}
+  #telemetry .tname{font-size:15px;font-weight:700;color:#fff;margin-bottom:4px;display:flex;align-items:center;gap:8px}
+  #telemetry .row{display:flex;justify-content:space-between;padding:2.5px 0;border-bottom:1px dashed rgba(120,160,255,.1)}
+  #telemetry .row span{color:#8d9bc4}
+  #telemetry .row b{color:#e8eeff;font-variant-numeric:tabular-nums;text-align:right}
+  .muted{color:#7d8bb4;font-style:italic}
+  .good{color:#7dffb0!important}.bad{color:#ff8a7a!important}
+  #stats{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);background:rgba(8,12,28,.74);backdrop-filter:blur(8px);border:1px solid rgba(120,160,255,.22);border-radius:12px;padding:7px 16px;font-size:12px;z-index:10;display:flex;gap:16px;font-variant-numeric:tabular-nums;white-space:nowrap}
+  #stats b{color:#7dffb0}
+  #modeBanner{position:fixed;top:14px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,rgba(255,90,60,.85),rgba(255,40,110,.85));padding:8px 18px;border-radius:20px;font-size:13px;font-weight:600;z-index:11;display:none;box-shadow:0 0 20px rgba(255,60,80,.5)}
+  #followBanner{position:fixed;top:14px;left:50%;transform:translateX(-50%);background:rgba(40,80,200,.75);padding:6px 16px;border-radius:20px;font-size:12.5px;z-index:11;display:none}
+  #dragInfo{position:fixed;pointer-events:none;background:rgba(0,0,0,.75);border:1px solid rgba(255,200,120,.5);padding:4px 8px;border-radius:6px;font-size:11.5px;z-index:12;display:none;color:#ffd9a0}
+  #labels{position:fixed;inset:0;pointer-events:none;z-index:5;overflow:hidden}
+  .label{position:absolute;left:0;top:0;font-size:11px;font-weight:600;white-space:nowrap;text-shadow:0 0 4px #000,0 0 2px #000;opacity:.9;will-change:transform}
+  #toasts{position:fixed;bottom:56px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:6px;z-index:20;pointer-events:none}
+  .toast{background:rgba(10,14,30,.88);border:1px solid rgba(255,170,90,.55);padding:7px 14px;border-radius:10px;font-size:13px;animation:tin .3s ease-out;transition:opacity .5s}
+  @keyframes tin{from{transform:translateY(12px);opacity:0}}
+  #hint{position:fixed;bottom:12px;left:12px;font-size:10.5px;color:#6d7aa4;z-index:9;line-height:1.5}
+  #hint b{color:#9fb0dd}
+</style>
+</head>
+<body>
+<div id="loading"><div class="sun"></div><p>PROSEDÜREL EVREN OLUŞTURULUYOR…</p></div>
+<div id="labels"></div>
+
+<div id="ui-left" class="panel">
+  <h1>☀️ Güneş Sistemi<span>3B N-Cisim Kütleçekim Simülatörü</span></h1>
+  <section>
+    <h2>⏱ Zaman Kontrolü</h2>
+    <div class="btnrow" id="speedBtns">
+      <button data-speed="0" id="btnPause" title="Boşluk">⏸ Duraklat</button>
+      <button data-speed="0.2">0.2x</button>
+      <button data-speed="1" class="active">1x</button>
+      <button data-speed="5">5x</button>
+      <button data-speed="20">20x</button>
+    </div>
+    <div class="kv" style="margin-top:7px"><span>Simülasyon zamanı</span><b id="simTime">0 gün</b></div>
+    <div class="kv"><span>Ölçek</span><b>1x ≈ 36,5 gün / sn</b></div>
+  </section>
+  <section>
+    <h2>🌌 Kütleçekim</h2>
+    <label class="slider">Kütleçekim sabiti (G) çarpanı <b id="gVal">1.00×</b>
+      <input type="range" id="gSlider" min="0.1" max="5" step="0.05" value="1"></label>
+    <div class="btnrow"><button id="gReset">G = 1× (gerçek)</button></div>
+    <div class="kv"><span>Entegratör</span><b>Velocity-Verlet (uyarlamalı dt)</b></div>
+  </section>
+  <section>
+    <h2>🚀 Gökcismi Ekle / Fırlat</h2>
+    <div class="typegrid" id="typeBtns">
+      <button data-type="planet" class="active">🪐 Gezegen</button>
+      <button data-type="comet">☄️ Kuyruklu Yıldız</button>
+      <button data-type="giant">⭐ Dev Yıldız</button>
+      <button data-type="blackhole">⚫ Kara Delik</button>
+    </div>
+    <label class="slider">Kütle çarpanı <b id="mVal">1.00×</b>
+      <input type="range" id="mSlider" min="-1" max="1" step="0.05" value="0"></label>
+    <div class="kv"><span>Eklenecek kütle</span><b id="mAbs">—</b></div>
+    <div class="btnrow" style="margin-top:6px">
+      <button id="btnLaunch" title="L">🎯 Fırlatma Modu</button>
+      <button id="btnRandom">🎲 Rastgele Fırlat</button>
+    </div>
+    <p class="help">Fırlatma modunda yörünge düzlemine <b>sol tık + sürükle</b> → hız vektörü. <b>Kısa tık</b>: gezegen/kuyruklu yıldız otomatik yörüngeye oturur, yıldız/kara delik durağan bırakılır. Modda kamerayı <b>sağ tık</b> ile döndür.</p>
+  </section>
+  <section>
+    <h2>👁 Görünüm</h2>
+    <div class="checks">
+      <label><input type="checkbox" id="cTrails" checked> Yörünge izleri</label>
+      <label><input type="checkbox" id="cVectors"> Hız vektörleri</label>
+      <label><input type="checkbox" id="cLabels" checked> Etiketler</label>
+      <label><input type="checkbox" id="cAst" checked> Asteroit kuşağı</label>
+      <label><input type="checkbox" id="cBloom" checked> Işıma (bloom)</label>
+      <label><input type="checkbox" id="cLens" checked> Mercekleme</label>
+    </div>
+  </section>
+  <section>
+    <h2>🎬 Senaryolar</h2>
+    <div class="btnrow">
+      <button id="scReset">🔄 Sistemi Sıfırla</button>
+      <button id="scBH" class="danger">⚫ Kara Delik İstilası</button>
+    </div>
+    <div class="btnrow" style="margin-top:5px">
+      <button id="scStar">⭐ Yıldız Geçişi</button>
+      <button id="scComets">☄️ Kuyruklu Yıldız Yağmuru</button>
+    </div>
+  </section>
+</div>
+
+<div id="ui-right" class="panel">
+  <h2 style="margin-top:0">🪐 Gök Cisimleri <small id="bodyCount"></small></h2>
+  <div id="bodyList"></div>
+  <h2>📡 Telemetri</h2>
+  <div id="telemetry"><p class="muted">Listeden ya da sahneden bir gökcismi seçin…</p></div>
+  <div class="btnrow">
+    <button id="btnFollow">🎥 Takip Et</button>
+    <button id="btnUnfollow" title="Esc">✋ Serbest</button>
+    <button id="btnDelete">🗑 Sil</button>
+  </div>
+</div>
+
+<div id="modeBanner">🎯 FIRLATMA MODU — düzleme tıkla & sürükle (Esc: çıkış)</div>
+<div id="followBanner"></div>
+<div id="dragInfo"></div>
+<div id="toasts"></div>
+<div id="stats">
+  <span>FPS: <b id="sFps">0</b></span>
+  <span>Cisim: <b id="sBodies">0</b></span>
+  <span>Asteroit: <b id="sAst">0</b></span>
+  <span>Alt adım/kare: <b id="sSub">0</b></span>
+  <span>Hız: <b id="sSpeed">1x</b></span>
+</div>
+<div id="hint"><b>Sol tık+sürükle</b>: döndür · <b>Tekerlek</b>: yakınlaştır · <b>Sağ tık</b>: kaydır · <b>Tık</b>: cisim seç<br>
+<b>Boşluk</b>: duraklat · <b>1-5</b>: hız · <b>T</b>: izler · <b>V</b>: vektörler · <b>L</b>: fırlatma · <b>Esc</b>: serbest kamera</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+} }
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+/* =========================================================================
+   SABİTLER — Birimler: uzunluk AU, zaman yıl, kütle Güneş kütlesi (M☉)
+   G = 4π² AU³ / (M☉·yıl²)
+   ========================================================================= */
+const S = 10;                       // görüntü birimi / AU
+const G0 = 4 * Math.PI * Math.PI;
+const M_EARTH = 3.003e-6;
+const AUYR_KMS = 4.7406;            // 1 AU/yıl = 4.74 km/s
+const AU_MKM = 149.598;             // milyon km
+const BASE_RATE = 0.1;              // 1x = 0.1 yıl / sn
+const EPS2 = 1e-9;                  // yumuşatma (AU²)
+const MAX_DT = 0.002, ETA = 0.03;
+const TRAIL_N = 520;
+const VEL_SCALE = 0.5;              // sürükleme birimi → AU/yıl
+const UP = new THREE.Vector3(0,1,0);
+
+/* =========================================================================
+   PROSEDÜREL GÜRÜLTÜ
+   ========================================================================= */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
+const rng = mulberry32(20261111);
+const PERM = new Uint8Array(512);
+(()=>{const p=[...Array(256).keys()];for(let i=255;i>0;i--){const j=Math.floor(rng()*(i+1));[p[i],p[j]]=[p[j],p[i]];}for(let i=0;i<512;i++)PERM[i]=p[i&255];})();
+function h3(x,y,z){return PERM[PERM[PERM[x&255]+(y&255)]+(z&255)]/255;}
+function noise3(x,y,z){
+  const xi=Math.floor(x),yi=Math.floor(y),zi=Math.floor(z);
+  const xf=x-xi,yf=y-yi,zf=z-zi;
+  const u=xf*xf*(3-2*xf),v=yf*yf*(3-2*yf),w=zf*zf*(3-2*zf);
+  const a=h3(xi,yi,zi),b=h3(xi+1,yi,zi),c=h3(xi,yi+1,zi),d=h3(xi+1,yi+1,zi);
+  const e=h3(xi,yi,zi+1),f=h3(xi+1,yi,zi+1),g=h3(xi,yi+1,zi+1),hh=h3(xi+1,yi+1,zi+1);
+  const x1=a+(b-a)*u,x2=c+(d-c)*u,x3=e+(f-e)*u,x4=g+(hh-g)*u;
+  const y1=x1+(x2-x1)*v,y2=x3+(x4-x3)*v;
+  return y1+(y2-y1)*w;
+}
+function fbm(x,y,z,o=5){let s=0,a=0.5,f=1,n=0;for(let i=0;i<o;i++){s+=a*noise3(x*f,y*f,z*f);n+=a;a*=0.5;f*=2.03;}return s/n;}
+const mix=(a,b,t)=>a+(b-a)*t;
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+const smooth=(e0,e1,x)=>{const t=clamp((x-e0)/(e1-e0),0,1);return t*t*(3-2*t);};
+const mixc=(c1,c2,t)=>{t=clamp(t,0,1);return[mix(c1[0],c2[0],t),mix(c1[1],c2[1],t),mix(c1[2],c2[2],t)];};
+function gauss(){let u=0,v=0;while(!u)u=rng();while(!v)v=rng();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+function hsl(h,s,l){const a=s*Math.min(l,1-l);const f=n=>{const k=(n+h*12)%12;return 255*(l-a*Math.max(-1,Math.min(k-3,9-k,1)));};return[f(0),f(8),f(4)];}
+
+/* Küresel eşleme (dikişsiz) prosedürel doku */
+function makeTex(w,h,fn,post){
+  const c=document.createElement('canvas');c.width=w;c.height=h;
+  const ctx=c.getContext('2d');const img=ctx.createImageData(w,h);const d=img.data;
+  for(let j=0;j<h;j++){
+    const lat=(0.5-(j+0.5)/h)*Math.PI,cl=Math.cos(lat),sl=Math.sin(lat);
+    for(let i=0;i<w;i++){
+      const lon=((i+0.5)/w)*Math.PI*2;
+      const col=fn(cl*Math.cos(lon),sl,cl*Math.sin(lon),lat,lon);
+      const k=(j*w+i)*4;d[k]=col[0];d[k+1]=col[1];d[k+2]=col[2];d[k+3]=col[3]===undefined?255:col[3];
+    }
+  }
+  ctx.putImageData(img,0,0);
+  if(post)post(ctx,w,h);
+  const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=8;return t;
+}
+function craters(ctx,w,h,n,dark){
+  for(let i=0;i<n;i++){
+    const x=rng()*w,y=h*0.08+rng()*h*0.84,r=Math.pow(rng(),3)*w*0.035+1;
+    const lat=(0.5-y/h)*Math.PI,rx=r/Math.max(0.25,Math.cos(lat));
+    ctx.save();ctx.translate(x,y);ctx.scale(rx/r,1);
+    const g=ctx.createRadialGradient(0,0,0,0,0,r);
+    g.addColorStop(0,`rgba(0,0,0,${dark})`);g.addColorStop(0.7,`rgba(0,0,0,${dark*0.55})`);
+    g.addColorStop(0.88,`rgba(255,255,255,${dark*0.45})`);g.addColorStop(1,'rgba(255,255,255,0)');
+    ctx.fillStyle=g;ctx.beginPath();ctx.arc(0,0,r,0,Math.PI*2);ctx.fill();ctx.restore();
+  }
+}
+
+const TEX = {
+  mercury:()=>makeTex(512,256,(x,y,z)=>{const n=fbm(x*4,y*4,z*4);const m=fbm(x*12+5,y*12,z*12,3);const v=80+n*120+m*40;return[v*1.03,v*0.97,v*0.9];},(c,w,h)=>craters(c,w,h,320,0.45)),
+  venus:()=>makeTex(512,256,(x,y,z)=>{const w1=fbm(x*2,y*2,z*2,4);const n=fbm(x*3+w1*2.5,y*7+w1*3,z*3+w1,5);return mixc([190,130,60],[252,226,165],n*1.4-0.2);}),
+  earth:()=>makeTex(1024,512,(x,y,z,lat)=>{
+    const n=fbm(x*1.8+7.1,y*1.8+1.3,z*1.8-2.2,6),d=fbm(x*8,y*8,z*8,3),al=Math.abs(lat);
+    if(al>1.22+(d-0.5)*0.35)return[236,242,250];
+    const sea=0.5;
+    if(n<sea){let c=mixc([6,22,64],[22,84,150],smooth(0.28,sea,n));if(n>sea-0.025)c=mixc(c,[60,150,170],(n-(sea-0.025))/0.025*0.6);return c;}
+    const hgt=(n-sea)/0.5;
+    const dz=1-clamp(Math.abs(al-0.38)/0.25,0,1);
+    const dry=dz*smooth(0.42,0.6,fbm(x*3+11,y*3,z*3,4));
+    let c=mixc([34,92,38],[86,124,52],d);
+    c=mixc(c,[200,172,112],dry);
+    c=mixc(c,[118,98,78],smooth(0.22,0.45,hgt));
+    c=mixc(c,[240,240,240],smooth(0.5,0.7,hgt));
+    if(al>0.95)c=mixc(c,[200,210,200],(al-0.95)/0.27*0.7);
+    return c;}),
+  clouds:()=>makeTex(1024,512,(x,y,z)=>{const w=fbm(x*2,y*2,z*2,3);const c=fbm(x*3+w*1.6,y*6+w,z*3,5);return[255,255,255,smooth(0.47,0.72,c)*240];}),
+  mars:()=>makeTex(512,256,(x,y,z,lat)=>{const n=fbm(x*3,y*3,z*3,6),d=fbm(x*7+3,y*7,z*7,4);let c=mixc([120,45,22],[208,108,62],n*1.5-0.25);c=mixc(c,[78,34,24],smooth(0.55,0.7,d)*0.65);if(Math.abs(lat)>1.3+(d-0.5)*0.3)c=[240,236,230];return c;},(c,w,h)=>craters(c,w,h,90,0.22)),
+  jupiter:()=>makeTex(1024,512,(x,y,z,lat,lon)=>{
+    const t=fbm(x*3,y*3,z*3,4);const b=Math.sin(y*22+t*3.5)*0.5+0.5;const b2=Math.sin(y*47+t*6)*0.5+0.5;
+    let c=mixc([196,152,112],[246,232,212],b);c=mixc(c,[150,92,62],b2*0.35*smooth(0.05,0.9,1-Math.abs(y)));
+    const dl=lat+0.38,dlon=Math.atan2(Math.sin(lon-2),Math.cos(lon-2));const e=dl*dl/0.0049+dlon*dlon/0.03;
+    if(e<1.4){const k=1-e/1.4;c=mixc(c,[196,82,48],smooth(0,0.45,k)*(0.75+0.25*t));}
+    return c;}),
+  saturn:()=>makeTex(1024,512,(x,y,z)=>{const t=fbm(x*2,y*2,z*2,4);const b=Math.sin(y*28+t*2.5)*0.5+0.5;const b2=Math.sin(y*61+t*4)*0.5+0.5;let c=mixc([196,166,118],[240,220,175],b);return mixc(c,[168,136,96],b2*0.25);}),
+  uranus:()=>makeTex(512,256,(x,y,z)=>{const t=fbm(x*2,y*2,z*2,3);const b=Math.sin(y*14+t*2)*0.5+0.5;return mixc([138,204,214],[180,234,240],b*0.5+t*0.4);}),
+  neptune:()=>makeTex(512,256,(x,y,z,lat,lon)=>{const t=fbm(x*2.5,y*2.5,z*2.5,5);const b=Math.sin(y*18+t*4)*0.5+0.5;let c=mixc([28,58,168],[72,118,228],b*0.7+t*0.3);const s=fbm(x*6,y*20,z*6,3);c=mixc(c,[220,230,255],smooth(0.68,0.8,s)*0.7);const dl=lat+0.35,dlon=Math.atan2(Math.sin(lon-1),Math.cos(lon-1));const e=dl*dl/0.006+dlon*dlon/0.03;if(e<1)c=mixc(c,[14,24,88],(1-e)*0.9);return c;}),
+  moon:()=>makeTex(512,256,(x,y,z)=>{const n=fbm(x*3,y*3,z*3,5),m=fbm(x*1.3+4,y*1.3,z*1.3,4);let v=130+n*70;if(m<0.45)v*=0.62+(m/0.45)*0.2;return[v,v,v*0.98];},(c,w,h)=>craters(c,w,h,300,0.35)),
+  randomPlanet:(gas)=>{
+    const h0=rng(),c1=hsl(h0,0.45+rng()*0.3,0.3+rng()*0.15),c2=hsl((h0+0.05+rng()*0.1)%1,0.4+rng()*0.4,0.55+rng()*0.2),seed=rng()*100,freq=10+rng()*30;
+    if(gas) return makeTex(256,128,(x,y,z)=>{const t=fbm(x*2+seed,y*2,z*2,4);return mixc(c1,c2,Math.sin(y*freq+t*4)*0.5+0.5);});
+    return makeTex(256,128,(x,y,z)=>{const n=fbm(x*3+seed,y*3,z*3,5);return mixc(c1,c2,n*1.6-0.3);},(c,w,h)=>craters(c,w,h,60,0.3));
+  }
+};
+
+function ringTexture(){
+  const c=document.createElement('canvas');c.width=1024;c.height=4;const g=c.getContext('2d');
+  for(let i=0;i<1024;i++){
+    const r=i/1024;let a=0.35+0.45*noise3(r*40,0.5,0.5)+0.25*noise3(r*160,1.5,0.5);
+    if(r<0.12)a*=r/0.12*0.4;
+    if(r>0.56&&r<0.6)a*=0.06;
+    if(r>0.86&&r<0.875)a*=0.25;
+    if(r>0.94)a*=(1-r)/0.06;
+    const br=190+50*noise3(r*25,3,3);
+    g.fillStyle=`rgba(${br|0},${(br*0.88)|0},${(br*0.7)|0},${clamp(a,0,1).toFixed(3)})`;g.fillRect(i,0,1,4);
+  }
+  const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t;
+}
+function glowTex(stops){
+  const c=document.createElement('canvas');c.width=c.height=256;const g=c.getContext('2d');
+  const gr=g.createRadialGradient(128,128,0,128,128,128);stops.forEach(([o,col])=>gr.addColorStop(o,col));
+  g.fillStyle=gr;g.fillRect(0,0,256,256);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t;
+}
+
+/* =========================================================================
+   SHADER'LAR
+   ========================================================================= */
+const GLSL_NOISE=`
+float hash(vec3 p){p=fract(p*0.3183099+0.1);p*=17.0;return fract(p.x*p.y*p.z*(p.x+p.y+p.z));}
+float noise(vec3 x){vec3 i=floor(x);vec3 f=fract(x);f=f*f*(3.0-2.0*f);
+ return mix(mix(mix(hash(i),hash(i+vec3(1.,0.,0.)),f.x),mix(hash(i+vec3(0.,1.,0.)),hash(i+vec3(1.,1.,0.)),f.x),f.y),
+            mix(mix(hash(i+vec3(0.,0.,1.)),hash(i+vec3(1.,0.,1.)),f.x),mix(hash(i+vec3(0.,1.,1.)),hash(i+vec3(1.,1.,1.)),f.x),f.y),f.z);}
+float fbm(vec3 p){float s=0.,a=.5;for(int i=0;i<5;i++){s+=a*noise(p);p*=2.07;a*=.5;}return s;}`;
+
+const STAR_VS=`varying vec3 vPos;varying vec3 vN;varying vec3 vV;
+void main(){vPos=position;vN=normalize(normalMatrix*normal);vec4 mv=modelViewMatrix*vec4(position,1.0);vV=normalize(-mv.xyz);gl_Position=projectionMatrix*mv;}`;
+const STAR_FS=`uniform float uTime;uniform vec3 uC1;uniform vec3 uC2;uniform vec3 uC3;varying vec3 vPos;varying vec3 vN;varying vec3 vV;
+${GLSL_NOISE}
+void main(){vec3 p=normalize(vPos)*3.2;
+ float n=fbm(p+vec3(uTime*0.04,uTime*0.03,-uTime*0.05));
+ float n2=fbm(p*2.6-vec3(uTime*0.07)+n*1.5);
+ float gran=noise(p*14.0+uTime*0.3);
+ float t=n*0.55+n2*0.6+gran*0.12;
+ vec3 col=mix(uC1,uC2,smoothstep(0.35,0.75,t));col=mix(col,uC3,smoothstep(0.72,0.98,t));
+ float fr=clamp(dot(vN,vV),0.0,1.0);
+ col*=0.55+0.6*pow(fr,0.45);
+ col+=uC2*pow(1.0-fr,2.5)*0.8;
+ gl_FragColor=vec4(col*1.7,1.0);}`;
+
+const ATM_VS=`varying vec3 vN;varying vec3 vV;varying vec3 vWN;varying vec3 vWP;
+void main(){vN=normalize(normalMatrix*normal);vWN=normalize(mat3(modelMatrix)*normal);vec4 wp=modelMatrix*vec4(position,1.0);vWP=wp.xyz;vec4 mv=viewMatrix*wp;vV=normalize(-mv.xyz);gl_Position=projectionMatrix*mv;}`;
+const ATM_FS=`uniform vec3 uColor;uniform float uInt;uniform float uMode;uniform vec3 uSun;varying vec3 vN;varying vec3 vV;varying vec3 vWN;varying vec3 vWP;
+void main(){float d=dot(normalize(vN),normalize(vV));float a;
+ if(uMode<0.5){a=pow(clamp(-d*2.2,0.0,1.0),2.0);}else{a=pow(1.0-clamp(d,0.0,1.0),3.0);}
+ float lit=clamp(dot(normalize(vWN),normalize(uSun-vWP))*0.9+0.35,0.06,1.0);
+ a*=uInt*lit;gl_FragColor=vec4(uColor*a,a);}`;
+
+const TAIL_VS=`varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`;
+const TAIL_FS=`uniform vec3 uColor;uniform float uOp;varying vec2 vUv;void main(){float a=pow(vUv.y,2.4)*uOp;gl_FragColor=vec4(uColor*a,a);}`;
+
+const DISK_VS=`varying vec3 vP;void main(){vP=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`;
+const DISK_FS=`uniform float uTime;varying vec3 vP;
+${GLSL_NOISE}
+void main(){float r=length(vP.xy);float t=clamp((r-1.5)/3.0,0.0,1.0);float ang=atan(vP.y,vP.x);
+ float rot=ang+uTime*1.8/pow(r,1.5);
+ vec3 q=vec3(cos(rot)*r*1.3,sin(rot)*r*1.3,r*2.2);
+ float n=noise(q*2.0)*0.6+noise(q*5.0)*0.4;
+ float streak=0.45+0.75*n;
+ vec3 col=mix(vec3(1.0,0.95,0.82),vec3(1.0,0.5,0.1),smoothstep(0.0,0.35,t));
+ col=mix(col,vec3(0.55,0.08,0.02),smoothstep(0.35,1.0,t));
+ float beam=0.6+0.6*(0.5+0.5*cos(ang));
+ float a=smoothstep(0.0,0.05,t)*pow(1.0-t,1.5)*streak*beam;
+ gl_FragColor=vec4(col*a*2.4,a);}`;
+
+const LensShader={
+  uniforms:{tDiffuse:{value:null},uBH:{value:[new THREE.Vector4(),new THREE.Vector4(),new THREE.Vector4(),new THREE.Vector4()]},uCount:{value:0},uAspect:{value:1}},
+  vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+  fragmentShader:`uniform sampler2D tDiffuse;uniform vec4 uBH[4];uniform int uCount;uniform float uAspect;varying vec2 vUv;
+  void main(){vec2 uv=vUv;
+   for(int i=0;i<4;i++){if(i>=uCount)break;vec4 B=uBH[i];vec2 d=uv-B.xy;d.x*=uAspect;float r=length(d);
+     if(r<B.w*1.03||r<1e-5)continue;
+     float fall=1.0-smoothstep(B.z*3.0,B.z*7.0,r);
+     float nr=r-(B.z*B.z/r)*fall;
+     vec2 nd=d/r*nr;nd.x/=uAspect;uv=B.xy+nd;}
+   gl_FragColor=texture2D(tDiffuse,clamp(uv,0.001,0.999));}`
+};
+
+/* =========================================================================
+   SAHNE / RENDERER
+   ========================================================================= */
+const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.05;
+document.body.prepend(renderer.domElement);
+
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x000003);
+const camera=new THREE.PerspectiveCamera(55,innerWidth/innerHeight,0.01,30000);
+camera.position.set(0,150,230);
+const controls=new OrbitControls(camera,renderer.domElement);
+controls.enableDamping=true;controls.dampingFactor=0.08;controls.minDistance=0.3;controls.maxDistance=5000;controls.zoomSpeed=1.3;
+const ambient=new THREE.AmbientLight(0x404a66,0.35);scene.add(ambient);
+
+const composer=new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene,camera));
+const lensPass=new ShaderPass(LensShader);composer.addPass(lensPass);
+const bloomPass=new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight),0.9,0.55,0.82);composer.addPass(bloomPass);
+composer.addPass(new OutputPass());
+
+const GLOW=glowTex([[0,'rgba(255,255,255,1)'],[0.18,'rgba(255,255,255,0.55)'],[0.45,'rgba(255,255,255,0.12)'],[1,'rgba(255,255,255,0)']]);
+const GLOW_SOFT=glowTex([[0,'rgba(255,255,255,0.75)'],[0.35,'rgba(255,255,255,0.14)'],[1,'rgba(255,255,255,0)']]);
+const DOT=glowTex([[0,'rgba(255,255,255,1)'],[0.5,'rgba(255,255,255,0.8)'],[1,'rgba(255,255,255,0)']]);
+function sprite(tex,color,scale,opacity){const m=new THREE.SpriteMaterial({map:tex,color,transparent:true,opacity,blending:THREE.AdditiveBlending,depthWrite:false});const s=new THREE.Sprite(m);s.scale.setScalar(scale);return s;}
+
+/* ---------- Derin uzay yıldız alanı + Samanyolu ---------- */
+function starLayer(N,size,bandFrac,bright){
+  const pos=new Float32Array(N*3),col=new Float32Array(N*3);
+  for(let i=0;i<N;i++){
+    let x,y,z;
+    if(rng()<bandFrac){const th=rng()*Math.PI*2;x=Math.cos(th);y=gauss()*0.09;z=Math.sin(th);}
+    else{do{x=rng()*2-1;y=rng()*2-1;z=rng()*2-1;}while(x*x+y*y+z*z>1||x*x+y*y+z*z<0.01);}
+    const l=Math.hypot(x,y,z),R=5000+rng()*3000;pos[i*3]=x/l*R;pos[i*3+1]=y/l*R;pos[i*3+2]=z/l*R;
+    const t=rng();let c=t<0.15?[0.65,0.78,1]:t<0.7?[1,1,1]:t<0.9?[1,0.88,0.68]:[1,0.65,0.5];
+    const b=bright*(0.35+Math.pow(rng(),2.5)*0.9);col[i*3]=c[0]*b;col[i*3+1]=c[1]*b;col[i*3+2]=c[2]*b;
+  }
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));g.setAttribute('color',new THREE.BufferAttribute(col,3));
+  const p=new THREE.Points(g,new THREE.PointsMaterial({size,sizeAttenuation:false,vertexColors:true,map:DOT,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending}));
+  p.rotation.set(1.05,0.3,0.6);p.renderOrder=-10;scene.add(p);return p;
+}
+starLayer(16000,1.6,0.45,0.9);starLayer(2500,2.8,0.3,1.2);starLayer(300,4.2,0.1,1.4);
+[[0x6a3cff,-0.6,0.3],[0xff3c9a,2.1,-0.2],[0x2c8cff,3.6,0.5],[0xff7a3c,4.8,-0.45],[0x3cffd0,1.2,0.7]].forEach(([c,a,e])=>{
+  const s=sprite(GLOW_SOFT,c,3500,0.07);s.position.set(Math.cos(a)*Math.cos(e)*6000,Math.sin(e)*6000,Math.sin(a)*Math.cos(e)*6000);s.renderOrder=-9;scene.add(s);
+});
+
+/* Fırlatma ızgarası */
+const grid=new THREE.PolarGridHelper(350,24,35,128,0x2a4a99,0x18284d);
+grid.material.transparent=true;grid.material.opacity=0.35;grid.visible=false;scene.add(grid);
+
+/* Seçim işaretçisi */
+const selRing=new THREE.Mesh(new THREE.RingGeometry(1.35,1.45,64),new THREE.MeshBasicMaterial({color:0x7fd4ff,transparent:true,opacity:0.85,side:THREE.DoubleSide,depthWrite:false}));
+selRing.visible=false;scene.add(selRing);
+
+/* =========================================================================
+   GÖK CİSİMLERİ
+   ========================================================================= */
+const bodies=[];
+let sun=null,nextId=1,selected=null,following=false,flying=false,listDirty=true,accDirty=true;
+const counters={planet:0,comet:0,giant:0,blackhole:0};
+const TYPE_TR={star:'Yıldız (G2V)',planet:'Gezegen',moon:'Doğal Uydu',comet:'Kuyruklu Yıldız',giant:'Kırmızı Dev Yıldız',blackhole:'Kara Delik'};
+const TYPE_IC={star:'☀️',planet:'🪐',moon:'🌙',comet:'☄️',giant:'⭐',blackhole:'⚫'};
+const labelsDiv=document.getElementById('labels');
+
+function atmMat(color,mode,int){
+  return new THREE.ShaderMaterial({uniforms:{uColor:{value:new THREE.Color(...color)},uInt:{value:int},uMode:{value:mode},uSun:{value:new THREE.Vector3()}},
+    vertexShader:ATM_VS,fragmentShader:ATM_FS,side:mode<0.5?THREE.BackSide:THREE.FrontSide,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false});
+}
+
+function createBody(o){
+  const b={
+    id:nextId++,name:o.name,type:o.type,mass:o.mass,
+    px:o.pos.x,py:o.pos.y,pz:o.pos.z,vx:o.vel.x,vy:o.vel.y,vz:o.vel.z,ax:0,ay:0,az:0,
+    radius:o.radius,baseRadius:o.radius,cr:o.cr,color:new THREE.Color(o.color),alive:true,
+    visParent:o.visParent||null,visScale:o.visScale||1,noCollide:o.noCollide||null,
+    spin:o.spin??0.5,disp:new THREE.Vector3(),eaten:0,trailInit:false,mats:[]
+  };
+  b.group=new THREE.Group();b.vis=new THREE.Group();b.group.add(b.vis);scene.add(b.group);
+  if(o.type==='star'||o.type==='giant')buildStar(b,o);
+  else if(o.type==='blackhole')buildBH(b);
+  else if(o.type==='comet')buildComet(b);
+  else buildPlanet(b,o);
+  b.core.userData.body=b;
+  // yörünge izi
+  const tg=new THREE.BufferGeometry();const tp=new Float32Array(TRAIL_N*3),tc=new Float32Array(TRAIL_N*3);
+  const trailCol=b.type==='blackhole'?new THREE.Color(0xff7a30):b.color.clone();
+  for(let i=0;i<TRAIL_N;i++){const f=Math.pow(1-i/TRAIL_N,1.6)*0.9;tc[i*3]=trailCol.r*f;tc[i*3+1]=trailCol.g*f;tc[i*3+2]=trailCol.b*f;}
+  tg.setAttribute('position',new THREE.BufferAttribute(tp,3).setUsage(THREE.DynamicDrawUsage));tg.setAttribute('color',new THREE.BufferAttribute(tc,3));
+  b.trail=new THREE.Line(tg,new THREE.LineBasicMaterial({vertexColors:true,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false}));
+  b.trail.frustumCulled=false;scene.add(b.trail);
+  // hız vektörü
+  b.arrow=new THREE.ArrowHelper(new THREE.Vector3(1,0,0),new THREE.Vector3(),1,b.color.clone().lerp(new THREE.Color(1,1,1),0.4).getHex(),0.3,0.18);
+  b.arrow.visible=false;scene.add(b.arrow);
+  // etiket
+  b.label=document.createElement('div');b.label.className='label';b.label.textContent=b.name;b.label.style.color='#'+b.color.clone().lerp(new THREE.Color(1,1,1),0.45).getHexString();
+  labelsDiv.appendChild(b.label);
+  bodies.push(b);listDirty=true;accDirty=true;
+  return b;
+}
+
+function buildStar(b,o){
+  const mat=new THREE.ShaderMaterial({uniforms:{uTime:{value:rng()*100},uC1:{value:new THREE.Color(o.c1)},uC2:{value:new THREE.Color(o.c2)},uC3:{value:new THREE.Color(o.c3)}},vertexShader:STAR_VS,fragmentShader:STAR_FS});
+  b.starMat=mat;
+  const m=new THREE.Mesh(new THREE.SphereGeometry(b.radius,96,48),mat);b.vis.add(m);b.core=m;
+  const s1=sprite(GLOW,o.glow,b.radius*4.4,0.95),s2=sprite(GLOW_SOFT,o.glow,b.radius*13,0.4),s3=sprite(GLOW_SOFT,o.c3,b.radius*2.8,0.6);
+  b.vis.add(s1,s2,s3);b.coronas=[s1,s2,s3];
+  b.light=new THREE.PointLight(o.light,o.lightInt,0,0);b.group.add(b.light);
+}
+
+function buildPlanet(b,o){
+  const tilt=new THREE.Group();tilt.rotation.z=o.tilt||0;b.vis.add(tilt);
+  const m=new THREE.Mesh(new THREE.SphereGeometry(b.radius,64,32),new THREE.MeshStandardMaterial({map:o.map,roughness:0.92,metalness:0}));
+  m.rotation.y=rng()*6;tilt.add(m);b.core=m;b.spinMesh=m;
+  if(o.clouds){const cm=new THREE.Mesh(new THREE.SphereGeometry(b.radius*1.018,64,32),new THREE.MeshStandardMaterial({map:o.clouds,transparent:true,depthWrite:false,roughness:1}));tilt.add(cm);b.cloudMesh=cm;}
+  if(o.atm){
+    const outer=new THREE.Mesh(new THREE.SphereGeometry(b.radius*1.16,48,24),atmMat(o.atm,0,o.atmInt??1.1));
+    const inner=new THREE.Mesh(new THREE.SphereGeometry(b.radius*1.005,48,24),atmMat(o.atm,1,0.9));
+    b.vis.add(outer,inner);b.mats.push(outer.material,inner.material);
+  }
+  if(o.rings){
+    const ri=b.radius*1.25,ro=b.radius*2.35,rg=new THREE.RingGeometry(ri,ro,192,1);
+    const pos=rg.attributes.position,uv=rg.attributes.uv,v=new THREE.Vector3();
+    for(let i=0;i<pos.count;i++){v.fromBufferAttribute(pos,i);uv.setXY(i,(v.length()-ri)/(ro-ri),0.5);}
+    const ring=new THREE.Mesh(rg,new THREE.MeshStandardMaterial({map:o.rings,transparent:true,side:THREE.DoubleSide,roughness:1,depthWrite:false,opacity:o.ringOp??1}));
+    ring.rotation.x=-Math.PI/2;tilt.add(ring);
+  }
+}
+
+function buildComet(b){
+  const m=new THREE.Mesh(new THREE.SphereGeometry(b.radius,24,12),new THREE.MeshStandardMaterial({color:0xc8d0dc,emissive:0x223344,roughness:1}));
+  b.vis.add(m);b.core=m;
+  b.coma=sprite(GLOW,0x9fdcff,b.radius*9,0.8);b.vis.add(b.coma);
+  const cg=new THREE.ConeGeometry(1,1,28,1,true);cg.rotateX(Math.PI);cg.translate(0,0.5,0);
+  const mk=(c,op)=>new THREE.Mesh(cg,new THREE.ShaderMaterial({uniforms:{uColor:{value:new THREE.Color(c)},uOp:{value:op}},vertexShader:TAIL_VS,fragmentShader:TAIL_FS,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
+  b.tailG=new THREE.Group();b.ion=mk(0x6cc8ff,0.85);b.dust=mk(0xffe2a8,0.55);b.dust.rotation.z=0.18;
+  b.tailG.add(b.ion,b.dust);b.group.add(b.tailG);
+}
+
+function buildBH(b){
+  // vis grubu birim yarıçapla kurulur ve olay ufku yarıçapına ölçeklenir
+  const core=new THREE.Mesh(new THREE.SphereGeometry(1,48,24),new THREE.MeshBasicMaterial({color:0x000000}));
+  b.vis.add(core);b.core=core;
+  const disk=new THREE.Mesh(new THREE.RingGeometry(1.5,4.5,160,6),new THREE.ShaderMaterial({uniforms:{uTime:{value:0}},vertexShader:DISK_VS,fragmentShader:DISK_FS,transparent:true,side:THREE.DoubleSide,blending:THREE.AdditiveBlending,depthWrite:false}));
+  disk.rotation.x=-Math.PI/2+0.25;b.vis.add(disk);b.disk=disk;
+  b.photon=new THREE.Mesh(new THREE.TorusGeometry(1.12,0.045,8,128),new THREE.MeshBasicMaterial({color:new THREE.Color(2.2,1.5,0.9)}));
+  b.vis.add(b.photon);
+  b.coronas=[sprite(GLOW_SOFT,0xff8a3a,10,0.35),sprite(GLOW_SOFT,0x7a4dff,16,0.18)];b.vis.add(...b.coronas);
+  b.vis.scale.setScalar(b.radius);
+}
+const bhRadiusAU=M=>0.09*Math.pow(M,0.45);
+
+/* ---------- Güneş Sistemi kurulumu ---------- */
+const PLANETS=[
+  {name:'Merkür',a:0.387,e:0.2056,i:7.0,m:1.66e-7,r:0.28,color:'#b9ab9a',tex:'mercury',tilt:0.03,spin:0.3},
+  {name:'Venüs',a:0.723,e:0.0068,i:3.39,m:2.448e-6,r:0.43,color:'#ebc47c',tex:'venus',tilt:3.09,spin:-0.15,atm:[1.0,0.82,0.5],atmInt:1.3},
+  {name:'Dünya',a:1.0,e:0.0167,i:0.0,m:3.003e-6,r:0.46,color:'#4fa3ff',tex:'earth',tilt:0.41,spin:0.6,atm:[0.3,0.58,1.0],atmInt:1.4,clouds:true},
+  {name:'Mars',a:1.524,e:0.0934,i:1.85,m:3.227e-7,r:0.34,color:'#e3683c',tex:'mars',tilt:0.44,spin:0.58,atm:[1.0,0.5,0.3],atmInt:0.6},
+  {name:'Jüpiter',a:5.203,e:0.0489,i:1.30,m:9.546e-4,r:1.75,color:'#e3b98a',tex:'jupiter',tilt:0.05,spin:1.3,atm:[1.0,0.85,0.65],atmInt:0.7},
+  {name:'Satürn',a:9.537,e:0.0565,i:2.49,m:2.858e-4,r:1.48,color:'#f0d9a0',tex:'saturn',tilt:0.47,spin:1.2,atm:[1.0,0.9,0.65],atmInt:0.6,rings:true},
+  {name:'Uranüs',a:19.19,e:0.0457,i:0.77,m:4.366e-5,r:0.98,color:'#8fdde8',tex:'uranus',tilt:1.71,spin:-0.9,atm:[0.55,0.9,1.0],atmInt:1.0,rings:'faint'},
+  {name:'Neptün',a:30.07,e:0.0113,i:1.77,m:5.151e-5,r:0.95,color:'#4a72ff',tex:'neptune',tilt:0.49,spin:0.9,atm:[0.35,0.55,1.0],atmInt:1.1}
+];
+let TEXCACHE=null;
+function buildTextures(){
+  if(TEXCACHE)return TEXCACHE;
+  TEXCACHE={};for(const k of ['mercury','venus','earth','clouds','mars','jupiter','saturn','uranus','neptune','moon'])TEXCACHE[k]=TEX[k]();
+  TEXCACHE.ring=ringTexture();return TEXCACHE;
+}
+const tangent=(rx,rz)=>{const r=Math.hypot(rx,rz)||1;return new THREE.Vector3(rz/r,0,-rx/r);};
+
+function createSolarSystem(){
+  const T=buildTextures();
+  sun=createBody({name:'Güneş',type:'star',mass:1,pos:new THREE.Vector3(),vel:new THREE.Vector3(),radius:2.2,cr:0.2,color:'#ffcc55',
+    c1:0xff5a00,c2:0xffb030,c3:0xfff3c0,glow:0xffa640,light:0xfff1dc,lightInt:3.2,spin:0.05});
+  let earth=null;
+  for(const p of PLANETS){
+    const th=rng()*Math.PI*2,r=p.a*(1-p.e),v=Math.sqrt(G0*(1+p.m)*(1+p.e)/(p.a*(1-p.e)));
+    const inc=p.i*Math.PI/180,node=rng()*Math.PI*2;
+    const pos=new THREE.Vector3(r*Math.cos(th),0,r*Math.sin(th)),vel=tangent(pos.x,pos.z).multiplyScalar(v);
+    const q=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(Math.cos(node),0,Math.sin(node)),inc);
+    pos.applyQuaternion(q);vel.applyQuaternion(q);
+    const b=createBody({name:p.name,type:'planet',mass:p.m,pos,vel,radius:p.r,cr:p.r/S*0.5,color:p.color,map:T[p.tex],tilt:p.tilt,spin:p.spin,atm:p.atm,atmInt:p.atmInt,
+      clouds:p.clouds?T.clouds:null,rings:p.rings?T.ring:null,ringOp:p.rings==='faint'?0.25:1});
+    if(p.name==='Dünya')earth=b;
+  }
+  // Ay
+  const d=0.00257,mm=3.694e-8,ph=rng()*Math.PI*2;
+  const rel=new THREE.Vector3(d*Math.cos(ph),0,d*Math.sin(ph)),vrel=tangent(rel.x,rel.z).multiplyScalar(Math.sqrt(G0*(earth.mass+mm)/d));
+  const q=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0),5.1*Math.PI/180);rel.applyQuaternion(q);vrel.applyQuaternion(q);
+  createBody({name:'Ay',type:'moon',mass:mm,pos:new THREE.Vector3(earth.px+rel.x,earth.py+rel.y,earth.pz+rel.z),vel:new THREE.Vector3(earth.vx+vrel.x,earth.vy+vrel.y,earth.vz+vrel.z),
+    radius:0.14,cr:0.0003,color:'#d8d8d8',map:T.moon,tilt:0.03,spin:0.1,visParent:earth,visScale:42,noCollide:earth});
+  // toplam momentumu sıfırla
+  let px=0,py=0,pz=0;for(const b of bodies){if(b===sun)continue;px+=b.mass*b.vx;py+=b.mass*b.vy;pz+=b.mass*b.vz;}
+  sun.vx=-px/sun.mass;sun.vy=-py/sun.mass;sun.vz=-pz/sun.mass;
+}
+
+/* ---------- Asteroit kuşağı (test parçacıkları) ---------- */
+const AST_N=2600;
+const astPos=new Float64Array(AST_N*3),astVel=new Float64Array(AST_N*3),astAlive=new Uint8Array(AST_N);
+const astGeo=new THREE.BufferGeometry();
+const astBuf=new Float32Array(AST_N*3),astCol=new Float32Array(AST_N*3);
+for(let i=0;i<AST_N;i++){const g=0.45+rng()*0.4,w=rng()*0.15;astCol[i*3]=g+w;astCol[i*3+1]=g+w*0.5;astCol[i*3+2]=g;}
+astGeo.setAttribute('position',new THREE.BufferAttribute(astBuf,3).setUsage(THREE.DynamicDrawUsage));
+astGeo.setAttribute('color',new THREE.BufferAttribute(astCol,3));
+const asteroids=new THREE.Points(astGeo,new THREE.PointsMaterial({size:0.13,map:DOT,vertexColors:true,transparent:true,depthWrite:false,sizeAttenuation:true}));
+asteroids.frustumCulled=false;scene.add(asteroids);
+let astCount=0;
+function initAsteroids(){
+  astCount=AST_N;
+  for(let i=0;i<AST_N;i++){
+    const r=2.15+Math.pow(rng(),0.8)*1.2+gauss()*0.05,th=rng()*Math.PI*2,y=gauss()*0.06*r;
+    const x=r*Math.cos(th),z=r*Math.sin(th),v=Math.sqrt(G0*sun.mass/r)*(1+gauss()*0.015),t=tangent(x,z);
+    astPos[i*3]=sun.px+x;astPos[i*3+1]=sun.py+y;astPos[i*3+2]=sun.pz+z;
+    astVel[i*3]=sun.vx+t.x*v;astVel[i*3+1]=sun.vy+gauss()*0.05;astVel[i*3+2]=sun.vz+t.z*v;astAlive[i]=1;
+  }
+}
+function stepAsteroids(simDt){
+  const src=bodies.filter(b=>b.mass>=1e-5);const ns=src.length;const G=G0*gMul;
+  const nsub=clamp(Math.ceil(simDt/0.004),1,14),dt=simDt/nsub;
+  for(let s=0;s<nsub;s++){
+    for(let i=0;i<AST_N;i++){
+      if(!astAlive[i])continue;const k=i*3;let ax=0,ay=0,az=0;const x=astPos[k],y=astPos[k+1],z=astPos[k+2];
+      for(let j=0;j<ns;j++){
+        const b=src[j];const dx=b.px-x,dy=b.py-y,dz=b.pz-z;const r2=dx*dx+dy*dy+dz*dz;
+        if((b.type==='star'||b.type==='giant'||b.type==='blackhole')&&r2<b.cr*b.cr){astAlive[i]=0;astCount--;break;}
+        const r2s=r2+1e-6,f=G*b.mass/(r2s*Math.sqrt(r2s));ax+=dx*f;ay+=dy*f;az+=dz*f;
+      }
+      if(!astAlive[i]){astBuf[k]=astBuf[k+1]=astBuf[k+2]=1e7;continue;}
+      astVel[k]+=ax*dt;astVel[k+1]+=ay*dt;astVel[k+2]+=az*dt;
+      astPos[k]+=astVel[k]*dt;astPos[k+1]+=astVel[k+1]*dt;astPos[k+2]+=astVel[k+2]*dt;
+      if(astPos[k]*astPos[k]+astPos[k+2]*astPos[k+2]>250000){astAlive[i]=0;astCount--;}
+    }
+  }
+}
+function updateAstBuffer(){
+  for(let i=0;i<AST_N;i++){const k=i*3;if(astAlive[i]){astBuf[k]=astPos[k]*S;astBuf[k+1]=astPos[k+1]*S;astBuf[k+2]=astPos[k+2]*S;}else{astBuf[k]=astBuf[k+1]=astBuf[k+2]=1e7;}}
+  astGeo.attributes.position.needsUpdate=true;
+}
+
+/* =========================================================================
+   N-CİSİM FİZİĞİ — Velocity-Verlet (Kick-Drift-Kick), uyarlamalı zaman adımı
+   ========================================================================= */
+let gMul=1,timeScale=1,prevScale=1,simTime=0,tauMin=1,lastSub=0;
+function computeAcc(){
+  const L=bodies,n=L.length,G=G0*gMul;let tmin=1e9;
+  for(let i=0;i<n;i++){const b=L[i];b.ax=0;b.ay=0;b.az=0;}
+  for(let i=0;i<n;i++){
+    const a=L[i];
+    for(let j=i+1;j<n;j++){
+      const c=L[j];const dx=c.px-a.px,dy=c.py-a.py,dz=c.pz-a.pz;
+      const r2=dx*dx+dy*dy+dz*dz+EPS2,r=Math.sqrt(r2),inv=G/(r2*r);
+      const fa=inv*c.mass,fc=inv*a.mass;
+      a.ax+=dx*fa;a.ay+=dy*fa;a.az+=dz*fa;c.ax-=dx*fc;c.ay-=dy*fc;c.az-=dz*fc;
+      const ms=a.mass+c.mass;if(ms>1e-9){const t2=r2*r/(G*ms);if(t2<tmin)tmin=t2;}
+    }
+  }
+  tauMin=Math.sqrt(tmin);
+}
+function verletStep(dt){
+  const L=bodies,h=dt*0.5;
+  for(const b of L){b.vx+=b.ax*h;b.vy+=b.ay*h;b.vz+=b.az*h;b.px+=b.vx*dt;b.py+=b.vy*dt;b.pz+=b.vz*dt;}
+  computeAcc();
+  for(const b of L){b.vx+=b.ax*h;b.vy+=b.ay*h;b.vz+=b.az*h;}
+  if(checkCollisions())computeAcc();
+}
+function advance(simDt){
+  if(accDirty){computeAcc();accDirty=false;}
+  let t=0,n=0;
+  while(t<simDt&&n<4000){const dt=Math.min(MAX_DT,ETA*tauMin,simDt-t);verletStep(dt);t+=dt;n++;}
+  lastSub=n;simTime+=t;
+}
+const rank=b=>b.type==='blackhole'?3:(b.type==='star'||b.type==='giant')?2:1;
+function checkCollisions(){
+  let any=false;const L=bodies.slice();
+  for(let i=0;i<L.length;i++){const a=L[i];if(!a.alive)continue;
+    for(let j=i+1;j<L.length;j++){const c=L[j];if(!c.alive||!a.alive)continue;
+      if(a.noCollide===c||c.noCollide===a)continue;
+      const dx=c.px-a.px,dy=c.py-a.py,dz=c.pz-a.pz,R=a.cr+c.cr;
+      if(dx*dx+dy*dy+dz*dz<R*R){merge(a,c);any=true;}
+    }
+  }
+  return any;
+}
+function merge(a,c){
+  const ra=rank(a),rc=rank(c);
+  const eater=ra!==rc?(ra>rc?a:c):(a.mass>=c.mass?a:c),food=eater===a?c:a;
+  const M=eater.mass+food.mass,old=eater.mass;
+  eater.vx=(eater.vx*old+food.vx*food.mass)/M;eater.vy=(eater.vy*old+food.vy*food.mass)/M;eater.vz=(eater.vz*old+food.vz*food.mass)/M;
+  if(eater.type!=='blackhole'&&rank(eater)===rank(food)){ // kütle merkezine taşı
+    eater.px=(eater.px*old+food.px*food.mass)/M;eater.py=(eater.py*old+food.py*food.mass)/M;eater.pz=(eater.pz*old+food.pz*food.mass)/M;
+  }
+  eater.mass=M;eater.eaten++;
+  if(eater.type==='blackhole'){const rh=bhRadiusAU(M);eater.cr=rh;eater.radius=rh*S;eater.vis.scale.setScalar(eater.radius);}
+  else if(food.mass/M>0.02){const f=Math.cbrt(M/old);eater.radius*=f;eater.cr*=f;eater.vis.scale.setScalar(eater.radius/eater.baseRadius);}
+  const col=eater.type==='blackhole'?0xff8a3a:food.color.getHex();
+  flash(food.disp.clone(),col,Math.max(food.radius,0.5)*6);
+  if(eater.type==='blackhole')toast(`⚫ <b>${eater.name}</b>, <b>${food.name}</b> cismini olay ufkunda yuttu!`);
+  else if(rank(eater)===2&&rank(food)===1)toast(`🔥 <b>${food.name}</b>, <b>${eater.name}</b> tarafından yutuldu`);
+  else toast(`💥 <b>${eater.name}</b> ile <b>${food.name}</b> çarpışıp birleşti`);
+  const wasSel=selected===food;
+  kill(food);
+  if(wasSel)select(eater,true);
+  accDirty=true;
+}
+function kill(b){
+  if(!b.alive)return;b.alive=false;
+  scene.remove(b.group);scene.remove(b.trail);scene.remove(b.arrow);b.label.remove();
+  b.group.traverse(o=>{if(o.geometry&&o.geometry.dispose)o.geometry.dispose();if(o.material&&!(o.material instanceof THREE.SpriteMaterial))o.material.dispose();});
+  b.trail.geometry.dispose();b.trail.material.dispose();
+  const i=bodies.indexOf(b);if(i>=0)bodies.splice(i,1);
+  for(const o of bodies)if(o.visParent===b){o.visParent=null;o.visScale=1;o.trailInit=false;}
+  if(b===sun){sun=null;ambient.intensity=0.9;}
+  if(selected===b){selected=null;following=false;}
+  listDirty=true;accDirty=true;
+}
+
+/* =========================================================================
+   EKLEME / FIRLATMA
+   ========================================================================= */
+let curType='planet';
+const BASE_MASS={planet:5*M_EARTH,comet:1e-12,giant:5,blackhole:5};
+const massMul=()=>Math.pow(10,parseFloat(document.getElementById('mSlider').value));
+function fmtMass(m){
+  if(m>=0.01)return m.toFixed(m>=10?1:3)+' M☉';
+  if(m>=1e-9)return (m/M_EARTH).toPrecision(3)+' M⊕';
+  return (m*1.989e30).toExponential(2)+' kg';
+}
+function dominant(x,y,z){let best=null,bv=0;for(const b of bodies){const r2=(b.px-x)**2+(b.py-y)**2+(b.pz-z)**2+1e-6;const v=b.mass/r2;if(v>bv){bv=v;best=b;}}return best;}
+function autoVel(type,pos){
+  if(type==='giant'||type==='blackhole')return new THREE.Vector3();
+  const d=dominant(pos.x,pos.y,pos.z);if(!d)return new THREE.Vector3();
+  const rx=pos.x-d.px,rz=pos.z-d.pz,r=Math.hypot(rx,rz)||1e-3;
+  const vc=Math.sqrt(G0*gMul*d.mass/r)*(type==='comet'?0.45:1);
+  const t=tangent(rx,rz);return new THREE.Vector3(d.vx+t.x*vc,d.vy,d.vz+t.z*vc);
+}
+function spawnBody(type,pos,vel){
+  const mm=massMul(),mass=BASE_MASS[type]*mm,n=++counters[type];let b;
+  if(type==='planet'){
+    const gas=mm>2.5,r=gas?0.75+0.35*Math.cbrt(mm):0.32+0.18*Math.cbrt(mm);
+    const hue=rng(),col=hsl(hue,0.6,0.62);
+    b=createBody({name:`Gezegen-${n}`,type,mass,pos,vel,radius:r,cr:r/S*0.5,color:new THREE.Color(col[0]/255,col[1]/255,col[2]/255),map:TEX.randomPlanet(gas),tilt:rng()*0.6,spin:0.4+rng(),atm:gas?[0.8,0.85,1]:null,atmInt:0.7});
+  }else if(type==='comet'){
+    b=createBody({name:`Kuyruklu Yıldız-${n}`,type,mass,pos,vel,radius:0.12,cr:0.002,color:'#9fdcff'});
+  }else if(type==='giant'){
+    const r=3.0*Math.pow(mm,0.3);
+    b=createBody({name:`Dev Yıldız-${n}`,type,mass,pos,vel,radius:r,cr:r/S,color:'#ff7a3c',c1:0x8a1500,c2:0xff4a10,c3:0xffb070,glow:0xff5a20,light:0xffa070,lightInt:1.6,spin:0.03});
+  }else{
+    const rh=bhRadiusAU(mass);
+    b=createBody({name:`Kara Delik-${n}`,type,mass,pos,vel,radius:rh*S,cr:rh,color:'#b38cff'});
+  }
+  computeDisp(b);flash(b.disp.clone(),type==='blackhole'?0x9a6bff:b.color.getHex(),Math.max(b.radius,0.5)*5);
+  toast(`${TYPE_IC[type]} <b>${b.name}</b> eklendi · ${fmtMass(mass)} · ${(Math.hypot(vel.x,vel.y,vel.z)*AUYR_KMS).toFixed(1)} km/s`);
+  return b;
+}
+function randomLaunch(type=curType){
+  const th=rng()*Math.PI*2;let pos,vel;
+  if(type==='planet'){const r=1.5+rng()*26;pos=new THREE.Vector3(r*Math.cos(th),0,r*Math.sin(th));vel=autoVel(type,pos);}
+  else{
+    const r=type==='comet'?32+rng()*14:38+rng()*10;
+    pos=new THREE.Vector3(r*Math.cos(th),(rng()-0.5)*4,r*Math.sin(th));
+    const aim=new THREE.Vector3((rng()-0.5)*(type==='comet'?3:8),0,(rng()-0.5)*(type==='comet'?3:8));
+    const sp=type==='comet'?0.9+rng()*0.6:3.5+rng()*3;
+    vel=aim.sub(pos).normalize().multiplyScalar(sp);
+    if(sun){vel.x+=sun.vx;vel.y+=sun.vy;vel.z+=sun.vz;}
+  }
+  return spawnBody(type,pos,vel);
+}
+
+/* =========================================================================
+   GÖRSEL GÜNCELLEMELER
+   ========================================================================= */
+function computeDisp(b){
+  const p=b.visParent;
+  if(p&&p.alive)b.disp.set(p.disp.x+(b.px-p.px)*S*b.visScale,p.disp.y+(b.py-p.py)*S*b.visScale,p.disp.z+(b.pz-p.pz)*S*b.visScale);
+  else b.disp.set(b.px*S,b.py*S,b.pz*S);
+  b.group.position.copy(b.disp);
+}
+function updateTrail(b){
+  const attr=b.trail.geometry.attributes.position,a=attr.array,d=b.disp;
+  if(!b.trailInit){for(let i=0;i<TRAIL_N;i++){a[i*3]=d.x;a[i*3+1]=d.y;a[i*3+2]=d.z;}b.trailInit=true;}
+  else{const dx=a[3]-d.x,dy=a[4]-d.y,dz=a[5]-d.z;if(dx*dx+dy*dy+dz*dz>0.0064)a.copyWithin(3,0,(TRAIL_N-1)*3);}
+  a[0]=d.x;a[1]=d.y;a[2]=d.z;attr.needsUpdate=true;
+}
+const effects=[];
+function flash(pos,color,size){const s=sprite(GLOW,color,size*0.3,1);s.position.copy(pos);scene.add(s);effects.push({s,t:0,size});}
+const _v=new THREE.Vector3(),_v2=new THREE.Vector3(),_dir=new THREE.Vector3();
+let showTrails=true,showVectors=false,showLabels=true,lensOn=true;
+
+function updateVisuals(dtReal,time,running){
+  const lightSrc=sun?sun.disp:null;
+  for(const b of bodies){
+    if(b.spinMesh&&running)b.spinMesh.rotation.y+=b.spin*dtReal;
+    if(b.cloudMesh&&running)b.cloudMesh.rotation.y+=b.spin*dtReal*1.15;
+    if(b.starMat){b.starMat.uniforms.uTime.value=time;const p=1+Math.sin(time*1.7+b.id)*0.04;b.coronas[0].scale.setScalar(b.radius*4.4*p);b.coronas[1].scale.setScalar(b.radius*13*(2-p));}
+    for(const m of b.mats){if(lightSrc)m.uniforms.uSun.value.copy(lightSrc);else m.uniforms.uSun.value.copy(b.disp).add(_v.set(0,1000,0));}
+    if(b.type==='blackhole'){
+      b.disk.material.uniforms.uTime.value=time;
+      b.photon.quaternion.copy(camera.quaternion);b.photon.quaternion.premultiply(_q.copy(b.group.quaternion).invert());
+      b.coronas[0].material.opacity=0.3+Math.sin(time*2.3)*0.06;
+    }
+    if(b.type==='comet'){
+      let src=null,best=0;for(const s of bodies){if(s.type==='star'||s.type==='giant'){const r2=(s.px-b.px)**2+(s.py-b.py)**2+(s.pz-b.pz)**2;const v=s.mass/r2;if(v>best){best=v;src=s;}}}
+      if(src){
+        _dir.set(b.px-src.px,b.py-src.py,b.pz-src.pz);const r=_dir.length();_dir.normalize();
+        const L=clamp(9/Math.pow(r,1.1),0.3,26);b.tailG.visible=true;
+        b.tailG.quaternion.setFromUnitVectors(UP,_dir);
+        b.ion.scale.set(0.12+L*0.025,L,0.12+L*0.025);b.dust.scale.set(0.2+L*0.06,L*0.7,0.2+L*0.06);
+        b.coma.scale.setScalar(b.radius*clamp(14/r,4,22));
+      }else b.tailG.visible=false;
+    }
+    // izler
+    b.trail.visible=showTrails;if(running||!b.trailInit)updateTrail(b);
+    // hız vektörleri
+    if(showVectors){
+      const sp=Math.hypot(b.vx,b.vy,b.vz);
+      if(sp>1e-6){b.arrow.visible=true;b.arrow.position.copy(b.disp);_dir.set(b.vx/sp,b.vy/sp,b.vz/sp);b.arrow.setDirection(_dir);
+        const len=b.radius*1.2+sp*0.45;b.arrow.setLength(len,Math.min(len*0.25,1.4),Math.min(len*0.12,0.7));}else b.arrow.visible=false;
+    }else b.arrow.visible=false;
+  }
+  // efektler
+  for(let i=effects.length-1;i>=0;i--){const e=effects[i];e.t+=dtReal;const k=e.t/1.1;e.s.scale.setScalar(e.size*(0.3+k*1.6));e.s.material.opacity=Math.max(0,1-k);if(k>=1){scene.remove(e.s);e.s.material.dispose();effects.splice(i,1);}}
+  // seçim halkası
+  if(selected){selRing.visible=true;selRing.position.copy(selected.disp);selRing.quaternion.copy(camera.quaternion);
+    selRing.scale.setScalar((selected.type==='blackhole'?selected.radius*1.6:selected.radius)*(1+Math.sin(time*4)*0.05));}
+  else selRing.visible=false;
+}
+const _q=new THREE.Quaternion();
+
+function updateLabels(){
+  const w=innerWidth,h=innerHeight;
+  for(const b of bodies){
+    if(!showLabels){b.label.style.display='none';continue;}
+    _v.copy(b.disp);_v.y+=b.radius*1.2;_v.project(camera);
+    if(_v.z>1||_v.x<-1.1||_v.x>1.1||_v.y<-1.1||_v.y>1.1){b.label.style.display='none';continue;}
+    b.label.style.display='block';
+    b.label.style.transform=`translate(${((_v.x*0.5+0.5)*w).toFixed(1)}px,${((-_v.y*0.5+0.5)*h-14).toFixed(1)}px) translateX(-50%)`;
+  }
+}
+const camRight=new THREE.Vector3();
+function updateLens(){
+  let n=0;const U=lensPass.uniforms;
+  if(lensOn){
+    camRight.setFromMatrixColumn(camera.matrixWorld,0);const aspect=innerWidth/innerHeight;
+    for(const b of bodies){
+      if(b.type!=='blackhole'||n>=4)continue;
+      _v.copy(b.disp).project(camera);if(_v.z>1||_v.z<-1)continue;
+      _v2.copy(b.disp).addScaledVector(camRight,b.radius).project(camera);
+      const rh=Math.hypot((_v2.x-_v.x)*0.5*aspect,(_v2.y-_v.y)*0.5);
+      U.uBH.value[n].set(_v.x*0.5+0.5,_v.y*0.5+0.5,rh*1.45,rh);n++;
+    }
+    U.uAspect.value=aspect;
+  }
+  U.uCount.value=n;lensPass.enabled=n>0;
+}
+
+/* =========================================================================
+   KAMERA TAKİP
+   ========================================================================= */
+const followBanner=document.getElementById('followBanner');
+function select(b,follow){
+  selected=b;following=!!(b&&follow);flying=following;listDirty=true;updateTelemetry();
+}
+controls.addEventListener('start',()=>{flying=false;});
+function updateCamera(){
+  if(following&&selected&&selected.alive){
+    const tp=selected.disp;
+    if(flying){
+      const desired=Math.max(selected.type==='blackhole'?selected.radius*14:selected.radius*7,2.5);
+      _dir.copy(camera.position).sub(controls.target).normalize();
+      _v.copy(tp).addScaledVector(_dir,desired);
+      controls.target.lerp(tp,0.12);camera.position.lerp(_v,0.07);
+      if(camera.position.distanceTo(_v)<desired*0.04&&controls.target.distanceTo(tp)<desired*0.02)flying=false;
+    }else{_v.copy(tp).sub(controls.target);controls.target.add(_v);camera.position.add(_v);}
+    followBanner.style.display=launchMode?'none':'block';followBanner.innerHTML=`🎥 Takip modu: <b>${selected.name}</b> (Esc: serbest)`;
+  }else followBanner.style.display='none';
+}
+
+/* =========================================================================
+   ARAYÜZ
+   ========================================================================= */
+const $=id=>document.getElementById(id);
+const toastsDiv=$('toasts');
+function toast(html){const d=document.createElement('div');d.className='toast';d.innerHTML=html;toastsDiv.appendChild(d);
+  while(toastsDiv.children.length>4)toastsDiv.firstChild.remove();
+  setTimeout(()=>{d.style.opacity='0';setTimeout(()=>d.remove(),500);},3800);}
+
+function refreshList(){
+  const list=$('bodyList');list.innerHTML='';
+  for(const b of bodies){
+    const d=document.createElement('div');d.className='bitem'+(b===selected?' sel':'');
+    const c='#'+b.color.getHexString();
+    d.innerHTML=`<span class="dot" style="background:${b.type==='blackhole'?'#000':c};color:${c};${b.type==='blackhole'?'border:2px solid #ff8a3a':''}"></span><span class="nm">${b.name}</span><span class="tp">${TYPE_IC[b.type]} ${TYPE_TR[b.type].split(' ')[0]}</span>`;
+    d.onclick=()=>select(b,true);list.appendChild(d);
+  }
+  $('bodyCount').textContent=bodies.length+' cisim';listDirty=false;
+}
+function fmtTime(y){const yy=Math.floor(y),dd=Math.floor((y-yy)*365.25);return yy>0?`${yy} yıl ${dd} gün`:`${dd} gün`;}
+function updateTelemetry(){
+  const T=$('telemetry');const b=selected;
+  if(!b||!b.alive){T.innerHTML='<p class="muted">Listeden ya da sahneden bir gökcismi seçin…</p>';return;}
+  const sp=Math.hypot(b.vx,b.vy,b.vz),acc=Math.hypot(b.ax,b.ay,b.az);
+  const rows=[['Tür',`${TYPE_IC[b.type]} ${TYPE_TR[b.type]}`],['Kütle',fmtMass(b.mass)],['Hız',`${sp.toFixed(3)} AU/yıl · <span style="color:#ffd27a">${(sp*AUYR_KMS).toFixed(2)} km/s</span>`]];
+  if(sun&&b!==sun){
+    const dx=b.px-sun.px,dy=b.py-sun.py,dz=b.pz-sun.pz,r=Math.hypot(dx,dy,dz);
+    const rvx=b.vx-sun.vx,rvy=b.vy-sun.vy,rvz=b.vz-sun.vz,v2=rvx*rvx+rvy*rvy+rvz*rvz,mu=G0*gMul*(sun.mass+b.mass);
+    const E=0.5*v2-mu/r;
+    rows.push(['Güneş\'e uzaklık',`${r.toFixed(4)} AU · ${(r*AU_MKM).toFixed(1)} M km`]);
+    rows.push(['Güneş\'e göre hız',`${(Math.sqrt(v2)*AUYR_KMS).toFixed(2)} km/s`]);
+    if(E<0){const a=-mu/(2*E),P=2*Math.PI*Math.sqrt(a*a*a/mu);
+      rows.push(['Yörünge durumu','<span class="good">Bağlı (eliptik)</span>']);rows.push(['Yarı büyük eksen',`${a.toFixed(3)} AU`]);rows.push(['Yörünge periyodu',P<2?`${(P*365.25).toFixed(1)} gün`:`${P.toFixed(2)} yıl`]);}
+    else rows.push(['Yörünge durumu','<span class="bad">Kaçış (hiperbolik)</span>']);
+  }else if(b===sun)rows.push(['Konum (barisentrik)',`${Math.hypot(b.px,b.py,b.pz).toFixed(4)} AU`]);
+  else rows.push(['Güneş\'e uzaklık','<span class="bad">Güneş yutuldu!</span>']);
+  rows.push(['İvme',`${acc.toExponential(2)} AU/yıl²`]);
+  if(b.type==='blackhole')rows.push(['Olay ufku yarıçapı',`${b.cr.toFixed(3)} AU`],['Yutulan cisim',`${b.eaten}`]);
+  else if(b.eaten)rows.push(['Birleşme / yutma',`${b.eaten}`]);
+  rows.push(['Kamera',following?'<span class="good">🎥 Takip ediliyor</span>':'Serbest']);
+  T.innerHTML=`<div class="tname"><span class="dot" style="width:12px;height:12px;border-radius:50%;background:#${b.color.getHexString()};display:inline-block"></span>${b.name}</div>`+
+    rows.map(([k,v])=>`<div class="row"><span>${k}</span><b>${v}</b></div>`).join('');
+}
+
+// zaman
+const speedBtns=[...document.querySelectorAll('#speedBtns button')];
+function setSpeed(s){
+  if(s===0&&timeScale===0){s=prevScale||1;}
+  if(s!==0)prevScale=s;timeScale=s;
+  speedBtns.forEach(b=>b.classList.toggle('active',parseFloat(b.dataset.speed)===timeScale));
+  $('btnPause').textContent=timeScale===0?'▶ Devam':'⏸ Duraklat';
+  $('sSpeed').textContent=timeScale===0?'DURAKLATILDI':timeScale+'x';
+}
+speedBtns.forEach(b=>b.onclick=()=>setSpeed(parseFloat(b.dataset.speed)));
+// G
+$('gSlider').oninput=e=>{gMul=parseFloat(e.target.value);$('gVal').textContent=gMul.toFixed(2)+'×';accDirty=true;};
+$('gReset').onclick=()=>{$('gSlider').value=1;gMul=1;$('gVal').textContent='1.00×';accDirty=true;};
+// tür & kütle
+const typeBtns=[...document.querySelectorAll('#typeBtns button')];
+function updMass(){$('mVal').textContent=massMul().toFixed(2)+'×';$('mAbs').textContent=fmtMass(BASE_MASS[curType]*massMul());}
+typeBtns.forEach(b=>b.onclick=()=>{curType=b.dataset.type;typeBtns.forEach(x=>x.classList.toggle('active',x===b));updMass();});
+$('mSlider').oninput=updMass;updMass();
+// fırlatma modu
+let launchMode=false;
+function setLaunch(on){
+  launchMode=on;$('btnLaunch').classList.toggle('active',on);$('modeBanner').style.display=on?'block':'none';grid.visible=on;
+  controls.mouseButtons.LEFT=on?-1:THREE.MOUSE.ROTATE;controls.mouseButtons.RIGHT=on?THREE.MOUSE.ROTATE:THREE.MOUSE.PAN;
+  renderer.domElement.style.cursor=on?'crosshair':'default';
+  if(!on)cancelDrag();
+}
+$('btnLaunch').onclick=()=>setLaunch(!launchMode);
+$('btnRandom').onclick=()=>randomLaunch();
+// görünüm
+$('cTrails').onchange=e=>showTrails=e.target.checked;
+$('cVectors').onchange=e=>showVectors=e.target.checked;
+$('cLabels').onchange=e=>showLabels=e.target.checked;
+$('cAst').onchange=e=>asteroids.visible=e.target.checked;
+$('cBloom').onchange=e=>bloomPass.enabled=e.target.checked;
+$('cLens').onchange=e=>lensOn=e.target.checked;
+// kamera / seçim düğmeleri
+$('btnFollow').onclick=()=>{if(selected)select(selected,true);};
+$('btnUnfollow').onclick=()=>{following=false;flying=false;updateTelemetry();};
+$('btnDelete').onclick=()=>{if(selected){const n=selected.name;flash(selected.disp.clone(),0xffffff,selected.radius*4);kill(selected);toast(`🗑 <b>${n}</b> simülasyondan kaldırıldı`);}};
+// senaryolar
+function resetSystem(){
+  for(const b of bodies.slice())kill(b);
+  for(const k in counters)counters[k]=0;
+  simTime=0;ambient.intensity=0.35;selected=null;following=false;
+  createSolarSystem();initAsteroids();accDirty=true;listDirty=true;
+}
+$('scReset').onclick=()=>{resetSystem();toast('🔄 Güneş Sistemi yeniden oluşturuldu');};
+$('scBH').onclick=()=>{
+  resetSystem();const old=$('mSlider').value;$('mSlider').value=Math.log10(8/5);
+  const pos=new THREE.Vector3(-34,1.5,22),vel=new THREE.Vector3(3.6,-0.15,-2.6);
+  const bh=spawnBody('blackhole',pos,vel);$('mSlider').value=old;updMass();
+  setSpeed(5);following=false;camera.position.set(-60,180,260);controls.target.set(0,0,0);
+  select(bh,false);toast('⚠️ 8 M☉ kütleli kara delik iç sisteme yaklaşıyor!');
+};
+$('scStar').onclick=()=>{
+  const old=$('mSlider').value;$('mSlider').value=Math.log10(1.5/5);
+  const s=spawnBody('giant',new THREE.Vector3(40,-3,-30),new THREE.Vector3(-3.2,0.2,2.6));$('mSlider').value=old;updMass();setSpeed(5);
+  toast('⭐ Bir dev yıldız Güneş Sistemi\'nden geçiyor');
+};
+$('scComets').onclick=()=>{for(let i=0;i<8;i++)randomLaunch('comet');setSpeed(5);};
+
+// klavye
+addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT'&&e.target.type!=='range'&&e.target.type!=='checkbox')return;
+  const k=e.key.toLowerCase();
+  if(e.code==='Space'){e.preventDefault();setSpeed(0);}
+  else if(k>='1'&&k<='5'){setSpeed([0.2,1,5,20,1][+k-1]);if(k==='5')setSpeed(0);}
+  else if(k==='t'){showTrails=!showTrails;$('cTrails').checked=showTrails;}
+  else if(k==='v'){showVectors=!showVectors;$('cVectors').checked=showVectors;}
+  else if(k==='l')setLaunch(!launchMode);
+  else if(e.key==='Escape'){if(launchMode)setLaunch(false);else{following=false;flying=false;updateTelemetry();}}
+});
+
+/* ---------- Fare: seçim ve fırlatma sürüklemesi ---------- */
+const raycaster=new THREE.Raycaster(),mouse=new THREE.Vector2(),plane=new THREE.Plane(new THREE.Vector3(0,1,0),0);
+let downPos=null,dragStart=null,dragCur=null;
+const dragLine=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),new THREE.Vector3()]),new THREE.LineBasicMaterial({color:0xffc070}));
+dragLine.visible=false;dragLine.frustumCulled=false;scene.add(dragLine);
+const ghost=new THREE.Mesh(new THREE.SphereGeometry(1,16,8),new THREE.MeshBasicMaterial({color:0xffc070,wireframe:true,transparent:true,opacity:0.6}));
+ghost.visible=false;scene.add(ghost);
+const dragInfo=$('dragInfo');
+function setMouse(e){mouse.x=e.clientX/innerWidth*2-1;mouse.y=-(e.clientY/innerHeight)*2+1;raycaster.setFromCamera(mouse,camera);}
+function planePoint(e){setMouse(e);const p=new THREE.Vector3();return raycaster.ray.intersectPlane(plane,p)?p:null;}
+function cancelDrag(){dragStart=null;dragLine.visible=false;ghost.visible=false;dragInfo.style.display='none';}
+const cvs=renderer.domElement;
+cvs.addEventListener('pointerdown',e=>{
+  downPos=[e.clientX,e.clientY];
+  if(launchMode&&e.button===0){const p=planePoint(e);if(!p)return;dragStart=p;dragCur=p.clone();
+    ghost.position.copy(p);ghost.scale.setScalar(curType==='giant'?3:curType==='blackhole'?2:0.5);ghost.visible=true;dragLine.visible=true;}
+});
+cvs.addEventListener('pointermove',e=>{
+  if(!dragStart)return;const p=planePoint(e);if(!p)return;dragCur=p;
+  const pa=dragLine.geometry.attributes.position;pa.setXYZ(0,dragStart.x,dragStart.y,dragStart.z);pa.setXYZ(1,p.x,p.y,p.z);pa.needsUpdate=true;
+  const len=p.distanceTo(dragStart);const v=len*VEL_SCALE;
+  dragInfo.style.display='block';dragInfo.style.left=(e.clientX+16)+'px';dragInfo.style.top=(e.clientY+12)+'px';
+  dragInfo.innerHTML=len<0.4?'Otomatik yörünge':`Hız: ${v.toFixed(2)} AU/yıl · ${(v*AUYR_KMS).toFixed(1)} km/s`;
+});
+cvs.addEventListener('pointerup',e=>{
+  const moved=downPos?Math.hypot(e.clientX-downPos[0],e.clientY-downPos[1]):99;
+  if(launchMode&&dragStart&&e.button===0){
+    const pos=dragStart.clone().divideScalar(S),dv=dragCur.clone().sub(dragStart);
+    const vel=dv.length()<0.4?autoVel(curType,pos):dv.multiplyScalar(VEL_SCALE);
+    spawnBody(curType,pos,vel);cancelDrag();return;
+  }
+  if(!launchMode&&e.button===0&&moved<5){
+    setMouse(e);const hits=raycaster.intersectObjects(bodies.map(b=>b.core),false);
+    if(hits.length)select(hits[0].object.userData.body,true);
+  }
+});
+
+addEventListener('resize',()=>{
+  camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);composer.setSize(innerWidth,innerHeight);bloomPass.setSize(innerWidth,innerHeight);
+});
+
+/* =========================================================================
+   BAŞLAT & ANA DÖNGÜ
+   ========================================================================= */
+await new Promise(r=>setTimeout(r,60));
+resetSystem();
+setSpeed(1);
+const ld=$('loading');ld.style.opacity='0';setTimeout(()=>ld.remove(),900);
+toast('☀️ Güneş Sistemi hazır — bir gezegene tıklayarak takip modunu deneyin');
+
+let last=performance.now(),fpsT=0,fpsF=0,telT=0;
+function animate(now){
+  requestAnimationFrame(animate);
+  const dtReal=Math.min((now-last)/1000,0.05);last=now;
+  const simDt=dtReal*timeScale*BASE_RATE,running=simDt>0;
+  if(running){advance(simDt);stepAsteroids(simDt);updateAstBuffer();}else lastSub=0;
+  for(const b of bodies)computeDisp(b);
+  updateVisuals(dtReal,now/1000,running);
+  updateCamera();
+  controls.update();
+  updateLabels();
+  updateLens();
+  composer.render();
+  if(listDirty)refreshList();
+  fpsF++;fpsT+=dtReal;telT+=dtReal;
+  if(fpsT>=0.5){$('sFps').textContent=Math.round(fpsF/fpsT);fpsF=0;fpsT=0;$('sBodies').textContent=bodies.length;$('sAst').textContent=astCount;$('sSub').textContent=lastSub;$('simTime').textContent=fmtTime(simTime);}
+  if(telT>=0.15){telT=0;updateTelemetry();}
+}
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>
